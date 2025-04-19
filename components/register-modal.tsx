@@ -15,7 +15,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Facebook, Wallet } from "lucide-react"
+import { Facebook, Wallet, Loader2 } from "lucide-react"
+import { createClientComponentClient } from "@/lib/supabase"
+import { toast } from "@/components/ui/use-toast"
 
 interface RegisterModalProps {
   open: boolean
@@ -25,39 +27,165 @@ interface RegisterModalProps {
 export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [fullName, setFullName] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const supabase = createClientComponentClient()
 
-  const handleRegisterWithEmail = (e: React.FormEvent) => {
+  const handleRegisterWithEmail = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Implementar lógica de registro com email/senha
-    console.log("Registrando com email:", email)
-    onOpenChange(false)
+    setIsLoading(true)
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      })
+
+      if (error) {
+        throw error
+      }
+
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Verifique seu email para confirmar o cadastro.",
+      })
+
+      onOpenChange(false)
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar conta",
+        description: error.message || "Ocorreu um erro ao criar sua conta.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleRegisterWithGoogle = () => {
-    // Implementar lógica de registro com Google
-    console.log("Registrando com Google")
-    onOpenChange(false)
+  const handleRegisterWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        throw error
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao conectar com Google",
+        description: error.message || "Ocorreu um erro ao conectar com Google.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleRegisterWithFacebook = () => {
-    // Implementar lógica de registro com Facebook
-    console.log("Registrando com Facebook")
-    onOpenChange(false)
+  const handleRegisterWithFacebook = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "facebook",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        throw error
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao conectar com Facebook",
+        description: error.message || "Ocorreu um erro ao conectar com Facebook.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleRegisterWithMetaMask = async () => {
-    // Implementar lógica de conexão com MetaMask
     if (typeof window.ethereum !== "undefined") {
       try {
+        setIsLoading(true)
         // Solicitar conexão de conta
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
-        console.log("Conectado com MetaMask:", accounts[0])
+        const walletAddress = accounts[0]
+
+        // Gerar um nonce aleatório para assinar
+        const nonce = Math.floor(Math.random() * 1000000).toString()
+
+        // Solicitar assinatura do usuário
+        const message = `Autenticação Loyalty Cripto: ${nonce}`
+        const signature = await window.ethereum.request({
+          method: "personal_sign",
+          params: [message, walletAddress],
+        })
+
+        // Autenticar com Supabase usando o endereço da carteira como identificador
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: `${walletAddress.toLowerCase()}@wallet.metamask`,
+          password: signature.slice(0, 20), // Usar parte da assinatura como senha
+        })
+
+        if (error && error.status === 400) {
+          // Se o usuário não existir, criar uma nova conta
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: `${walletAddress.toLowerCase()}@wallet.metamask`,
+            password: signature.slice(0, 20),
+            options: {
+              data: {
+                wallet_address: walletAddress,
+              },
+            },
+          })
+
+          if (signUpError) throw signUpError
+
+          // Atualizar o perfil com o endereço da carteira
+          if (signUpData.user) {
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({ wallet_address: walletAddress })
+              .eq("id", signUpData.user.id)
+
+            if (updateError) throw updateError
+          }
+
+          toast({
+            title: "Conta criada com sucesso!",
+            description: "Você está conectado com MetaMask.",
+          })
+        } else if (error) {
+          throw error
+        } else {
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Você está conectado com MetaMask.",
+          })
+        }
+
         onOpenChange(false)
-      } catch (error) {
-        console.error("Erro ao conectar com MetaMask:", error)
+      } catch (error: any) {
+        toast({
+          title: "Erro ao conectar com MetaMask",
+          description: error.message || "Ocorreu um erro ao conectar com MetaMask.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
       }
     } else {
-      alert("MetaMask não encontrado. Por favor, instale a extensão MetaMask.")
+      toast({
+        title: "MetaMask não encontrado",
+        description: "Por favor, instale a extensão MetaMask.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -73,6 +201,7 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
             variant="outline"
             className="flex items-center justify-center gap-2"
             onClick={handleRegisterWithGoogle}
+            disabled={isLoading}
           >
             <svg viewBox="0 0 24 24" width="24" height="24" className="h-5 w-5">
               <path
@@ -98,6 +227,7 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
             variant="outline"
             className="flex items-center justify-center gap-2"
             onClick={handleRegisterWithFacebook}
+            disabled={isLoading}
           >
             <Facebook className="h-5 w-5 text-blue-600" />
             Continuar com Facebook
@@ -106,13 +236,25 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
             variant="outline"
             className="flex items-center justify-center gap-2"
             onClick={handleRegisterWithMetaMask}
+            disabled={isLoading}
           >
-            <Wallet className="h-5 w-5 text-orange-500" />
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wallet className="h-5 w-5 text-orange-500" />}
             Conectar com MetaMask
           </Button>
           <Separator className="my-2" />
           <form onSubmit={handleRegisterWithEmail}>
             <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">Nome Completo</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Seu nome completo"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -137,8 +279,16 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                disabled={isLoading}
               >
-                Criar Conta
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  "Criar Conta"
+                )}
               </Button>
             </div>
           </form>

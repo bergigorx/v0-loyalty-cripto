@@ -4,13 +4,17 @@ import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight } from "lucide-react"
+import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User } from "lucide-react"
 import { RegisterModal } from "@/components/register-modal"
 import { LoginModal } from "@/components/login-modal"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function LandingPage() {
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const { user, profile, signOut } = useAuth()
+  const router = useRouter()
 
   const openRegisterModal = () => {
     setLoginModalOpen(false)
@@ -20,6 +24,10 @@ export default function LandingPage() {
   const openLoginModal = () => {
     setRegisterModalOpen(false)
     setLoginModalOpen(true)
+  }
+
+  const handleProfileClick = () => {
+    router.push("/dashboard")
   }
 
   return (
@@ -50,21 +58,40 @@ export default function LandingPage() {
               >
                 Benefícios
               </Link>
+              <Link
+                href="/marketplace"
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Marketplace
+              </Link>
             </nav>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
             <nav className="flex items-center space-x-2">
-              {/* Atualizar o botão Entrar para abrir o modal de login */}
-              <Button variant="outline" size="sm" className="hidden sm:flex" onClick={openLoginModal}>
-                Entrar
-              </Button>
-              <Button
-                size="sm"
-                className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                onClick={openRegisterModal}
-              >
-                Registrar
-              </Button>
+              {user ? (
+                <>
+                  <Button variant="outline" size="sm" className="hidden sm:flex" onClick={handleProfileClick}>
+                    <User className="h-4 w-4 mr-2" />
+                    {profile?.username || user.email}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={signOut}>
+                    Sair
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" className="hidden sm:flex" onClick={openLoginModal}>
+                    Entrar
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                    onClick={openRegisterModal}
+                  >
+                    Registrar
+                  </Button>
+                </>
+              )}
             </nav>
           </div>
         </div>
@@ -84,13 +111,21 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  {/* Atualizar o botão Comece Agora para abrir o modal de registro */}
-                  <Button
-                    className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                    onClick={openRegisterModal}
-                  >
-                    Comece Agora
-                  </Button>
+                  {user ? (
+                    <Button
+                      className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                      onClick={() => router.push("/marketplace")}
+                    >
+                      Explorar Marketplace
+                    </Button>
+                  ) : (
+                    <Button
+                      className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                      onClick={openRegisterModal}
+                    >
+                      Comece Agora
+                    </Button>
+                  )}
                   <Button variant="outline">Saiba Mais</Button>
                 </div>
               </div>
@@ -117,6 +152,7 @@ export default function LandingPage() {
                         <Button
                           size="sm"
                           className="w-full mt-2 bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                          onClick={() => (user ? router.push("/marketplace") : openRegisterModal())}
                         >
                           Trocar Tokens
                         </Button>
@@ -410,7 +446,7 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
+                  <Link href="/marketplace" className="text-sm text-muted-foreground hover:text-foreground">
                     Marketplace
                   </Link>
                 </li>
