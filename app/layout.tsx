@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Loyalty.Crypto - Programa de Fidelidade na Blockchain",
+  title: "Loyalty Cripto - Programa de Fidelidade na Blockchain",
   description:
     "Um programa de fidelidade revolucionário onde os clientes ganham tokens trocáveis e NFTs colecionáveis, transformando pontos em experiências memoráveis e até renda extra.",
     generator: 'v0.dev'

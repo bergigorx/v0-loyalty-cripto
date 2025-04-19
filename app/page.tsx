@@ -1,9 +1,27 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight } from "lucide-react"
+import { RegisterModal } from "@/components/register-modal"
+import { LoginModal } from "@/components/login-modal"
 
 export default function LandingPage() {
+  const [registerModalOpen, setRegisterModalOpen] = useState(false)
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
+
+  const openRegisterModal = () => {
+    setLoginModalOpen(false)
+    setRegisterModalOpen(true)
+  }
+
+  const openLoginModal = () => {
+    setRegisterModalOpen(false)
+    setLoginModalOpen(true)
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -11,7 +29,7 @@ export default function LandingPage() {
           <div className="flex gap-6 md:gap-10">
             <Link href="/" className="flex items-center space-x-2">
               <Coins className="h-6 w-6 text-purple-600" />
-              <span className="inline-block font-bold">loyalty.crypto</span>
+              <span className="inline-block font-bold">Loyalty Cripto</span>
             </Link>
             <nav className="hidden md:flex gap-6">
               <Link
@@ -36,12 +54,14 @@ export default function LandingPage() {
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
             <nav className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" className="hidden sm:flex">
+              {/* Atualizar o botão Entrar para abrir o modal de login */}
+              <Button variant="outline" size="sm" className="hidden sm:flex" onClick={openLoginModal}>
                 Entrar
               </Button>
               <Button
                 size="sm"
                 className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                onClick={openRegisterModal}
               >
                 Registrar
               </Button>
@@ -64,7 +84,11 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600">
+                  {/* Atualizar o botão Comece Agora para abrir o modal de registro */}
+                  <Button
+                    className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                    onClick={openRegisterModal}
+                  >
                     Comece Agora
                   </Button>
                   <Button variant="outline">Saiba Mais</Button>
@@ -330,7 +354,7 @@ export default function LandingPage() {
           <div className="flex flex-col gap-3">
             <Link href="/" className="flex items-center space-x-2">
               <Coins className="h-6 w-6 text-purple-600" />
-              <span className="inline-block font-bold">loyalty.crypto</span>
+              <span className="inline-block font-bold">Loyalty Cripto</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Transformando pontos em experiências e valor real através da blockchain.
@@ -421,7 +445,7 @@ export default function LandingPage() {
         </div>
         <div className="container flex flex-col gap-2 sm:flex-row py-6 items-center border-t">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} loyalty.crypto. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} Loyalty Cripto. Todos os direitos reservados.
           </p>
           <nav className="sm:ml-auto flex gap-4 sm:gap-6">
             <Link href="#" className="text-xs text-muted-foreground hover:text-foreground">
@@ -433,6 +457,10 @@ export default function LandingPage() {
           </nav>
         </div>
       </footer>
+
+      {/* Adicione os modais no final do componente */}
+      <RegisterModal open={registerModalOpen} onOpenChange={setRegisterModalOpen} />
+      <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} onRegisterClick={openRegisterModal} />
     </div>
   )
 }
