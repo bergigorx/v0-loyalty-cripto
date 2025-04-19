@@ -1,0 +1,8 @@
+{
+  "name": "loyalty-cripto",
+  "compatibility_date": "2025-04-17",
+  "workers_dev": true,
+  "site": {
+    "bucket": "./main"
+  }
+}
