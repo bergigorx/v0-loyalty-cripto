@@ -69,6 +69,7 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
 
   const handleRegisterWithGoogle = async () => {
     try {
+      setIsLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -85,11 +86,14 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
         description: error.message || "Ocorreu um erro ao conectar com Google.",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleRegisterWithFacebook = async () => {
     try {
+      setIsLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: {
@@ -106,6 +110,8 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
         description: error.message || "Ocorreu um erro ao conectar com Facebook.",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -191,7 +197,7 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-w-[90vw] w-full">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Criar Conta</DialogTitle>
           <DialogDescription>Escolha como deseja criar sua conta na plataforma Loyalty Cripto</DialogDescription>
@@ -296,7 +302,7 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
         <DialogFooter className="flex flex-col items-center">
           <p className="text-sm text-muted-foreground">
             Já tem uma conta?{" "}
-            <a href="#" className="text-purple-600 hover:underline">
+            <a href="#" className="text-purple-600 hover:underline" onClick={() => onOpenChange(false)}>
               Entrar
             </a>
           </p>

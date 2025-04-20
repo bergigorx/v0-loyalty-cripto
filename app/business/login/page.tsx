@@ -4,10 +4,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, Coffee, AlertCircle, Loader2 } from "lucide-react"
+import { Wallet, AlertCircle, Loader2 } from "lucide-react"
 import { connectWallet, checkIsOwner } from "@/lib/blockchain-service"
 import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
+import { Logo } from "@/components/logo"
 
 export default function BusinessLoginPage() {
   const [isConnecting, setIsConnecting] = useState(false)
@@ -81,10 +82,7 @@ export default function BusinessLoginPage() {
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
           <div className="flex gap-6 md:gap-10">
-            <Link href="/" className="flex items-center space-x-2">
-              <Coffee className="h-6 w-6 text-purple-600" />
-              <span className="inline-block font-bold">Loyalty Cripto</span>
-            </Link>
+            <Logo />
             <nav className="hidden md:flex gap-6">
               <Link
                 href="/"
@@ -177,10 +175,7 @@ export default function BusinessLoginPage() {
       <footer className="w-full border-t bg-background">
         <div className="container py-6">
           <div className="flex flex-col sm:flex-row justify-between items-center">
-            <div className="flex items-center space-x-2">
-              <Coffee className="h-5 w-5 text-purple-600" />
-              <span className="font-bold">Loyalty Cripto</span>
-            </div>
+            <Logo size="sm" />
             <p className="text-xs text-muted-foreground mt-2 sm:mt-0">
               &copy; {new Date().getFullYear()} Loyalty Cripto. Todos os direitos reservados.
             </p>

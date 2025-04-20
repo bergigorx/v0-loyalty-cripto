@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Wallet, Loader2 } from "lucide-react"
 import { createClientComponentClient } from "@/lib/supabase"
 import { toast } from "@/components/ui/use-toast"
+import { Separator } from "@/components/ui/separator"
 
 interface LoginModalProps {
   open: boolean
@@ -63,6 +64,7 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
 
   const handleLoginWithGoogle = async () => {
     try {
+      setIsLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -79,6 +81,8 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
         description: error.message || "Ocorreu um erro ao conectar com Google.",
         variant: "destructive",
       })
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -147,7 +151,7 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-w-[90vw] w-full">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Entrar</DialogTitle>
           <DialogDescription>Acesse sua conta na plataforma Loyalty Cripto</DialogDescription>
@@ -188,6 +192,9 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
             {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wallet className="h-5 w-5 text-orange-500" />}
             Conectar com MetaMask
           </Button>
+
+          <Separator className="my-2" />
+
           <form onSubmit={handleLoginWithEmail}>
             <div className="grid gap-4">
               <div className="grid gap-2">

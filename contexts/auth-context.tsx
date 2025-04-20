@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { createClientComponentClient } from "@/lib/supabase"
 import type { Session, User } from "@supabase/supabase-js"
 import type { Database } from "@/types/supabase"
+import { useRouter } from "next/navigation"
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const supabase = createClientComponentClient()
+  const router = useRouter()
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -90,8 +92,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setProfile(null)
+    try {
+      // Limpar quaisquer dados de sessão armazenados localmente
+      localStorage.removeItem("businessWalletAddress")
+
+      // Fazer logout no Supabase
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        throw error
+      }
+
+      // Limpar estados
+      setProfile(null)
+      setUser(null)
+      setSession(null)
+
+      // Redirecionar para a página inicial
+      router.push("/")
+
+      // Forçar um recarregamento da página para garantir que todos os estados sejam limpos
+      window.location.href = "/"
+    } catch (error) {
+      console.error("Error signing out:", error)
+    }
   }
 
   return (

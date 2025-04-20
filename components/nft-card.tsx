@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Coins, ShoppingCart, Tag, Calendar, LogIn, ImageOff } from "lucide-react"
+import { Coins, ShoppingCart, Tag, Calendar, LogIn, ImageOff, Loader2 } from "lucide-react"
 import { RarityBadge } from "@/components/rarity-badge"
 import { PartnerLogo } from "@/components/partner-logo"
 import { formatDistanceToNow } from "date-fns"
@@ -19,6 +19,7 @@ interface NFTCardProps {
   showSellOption?: boolean
   isSelling?: boolean
   isAuthenticated?: boolean
+  isProcessing?: boolean
 }
 
 export function NFTCard({
@@ -30,6 +31,7 @@ export function NFTCard({
   showSellOption = false,
   isSelling = false,
   isAuthenticated = false,
+  isProcessing = false,
 }: NFTCardProps) {
   const hasExpiration = nft.expiration_date && new Date(nft.expiration_date) > new Date()
   const isPartnerNFT = !!nft.partner_company
@@ -128,11 +130,20 @@ export function NFTCard({
           <Button
             size="sm"
             onClick={onBuy}
-            disabled={disableBuy}
+            disabled={disableBuy || isProcessing}
             className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
           >
-            <ShoppingCart className="h-4 w-4 mr-1" />
-            Comprar
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                <ShoppingCart className="h-4 w-4 mr-1" />
+                Comprar
+              </>
+            )}
           </Button>
         ) : null}
         {showSellOption && (

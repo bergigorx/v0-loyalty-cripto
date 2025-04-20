@@ -4,15 +4,17 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User } from "lucide-react"
+import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User, Menu, X } from "lucide-react"
 import { RegisterModal } from "@/components/register-modal"
 import { LoginModal } from "@/components/login-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
+import { Logo } from "@/components/logo"
 
 export default function LandingPage() {
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -43,10 +45,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
           <div className="flex gap-6 md:gap-10">
-            <Link href="/" className="flex items-center space-x-2">
-              <Coins className="h-6 w-6 text-purple-600" />
-              <span className="inline-block font-bold">Loyalty Cripto</span>
-            </Link>
+            <Logo />
             <nav className="hidden md:flex gap-6">
               <Link
                 href="#features"
@@ -81,14 +80,33 @@ export default function LandingPage() {
             </nav>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <nav className="flex items-center space-x-2">
+            {/* Menu para dispositivos móveis */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              <span className="sr-only">Menu</span>
+            </Button>
+
+            {/* Botões para desktop */}
+            <nav className="hidden md:flex items-center space-x-2">
               {user ? (
                 <>
                   <Button variant="outline" size="sm" className="hidden sm:flex" onClick={handleProfileClick}>
                     <User className="h-4 w-4 mr-2" />
                     {profile?.username || user.email}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={signOut}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      await signOut()
+                      router.push("/")
+                    }}
+                  >
                     Sair
                   </Button>
                 </>
@@ -109,8 +127,99 @@ export default function LandingPage() {
             </nav>
           </div>
         </div>
+
+        {/* Menu móvel expansível */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t bg-background">
+            <div className="container py-4 space-y-4">
+              <nav className="flex flex-col space-y-4">
+                <Link
+                  href="#features"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Recursos
+                </Link>
+                <Link
+                  href="#how-it-works"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Como Funciona
+                </Link>
+                <Link
+                  href="#benefits"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Benefícios
+                </Link>
+                <Link
+                  href="/marketplace"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Marketplace
+                </Link>
+                <Link
+                  href="/business/login"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Para Empresas
+                </Link>
+              </nav>
+
+              <div className="flex flex-col space-y-2">
+                {user ? (
+                  <>
+                    <Button variant="outline" className="w-full" onClick={handleProfileClick}>
+                      <User className="h-4 w-4 mr-2" />
+                      Minha Conta
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={async () => {
+                        setMobileMenuOpen(false)
+                        await signOut()
+                        router.push("/")
+                      }}
+                    >
+                      Sair
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        openLoginModal()
+                        setMobileMenuOpen(false)
+                      }}
+                    >
+                      Entrar
+                    </Button>
+                    <Button
+                      className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                      onClick={() => {
+                        openRegisterModal()
+                        setMobileMenuOpen(false)
+                      }}
+                    >
+                      Registrar
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
+
       <main className="flex-1">
+        {/* Conteúdo da página principal permanece o mesmo */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-b from-background to-purple-50 dark:from-background dark:to-purple-950/20">
           <div className="container px-4 md:px-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_500px]">
@@ -402,10 +511,7 @@ export default function LandingPage() {
       <footer className="w-full border-t bg-background">
         <div className="container flex flex-col gap-6 py-8 md:py-12 lg:flex-row lg:justify-between">
           <div className="flex flex-col gap-3">
-            <Link href="/" className="flex items-center space-x-2">
-              <Coins className="h-6 w-6 text-purple-600" />
-              <span className="inline-block font-bold">Loyalty Cripto</span>
-            </Link>
+            <Logo size="sm" />
             <p className="text-sm text-muted-foreground">
               Transformando pontos em experiências e valor real através da blockchain.
             </p>
@@ -508,7 +614,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Adicione os modais no final do componente */}
+      {/* Modais de login e registro */}
       <RegisterModal open={registerModalOpen} onOpenChange={setRegisterModalOpen} />
       <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} onRegisterClick={openRegisterModal} />
     </div>

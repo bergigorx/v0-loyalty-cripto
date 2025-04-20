@@ -11,6 +11,9 @@ export const metadata = {
   title: "Loyalty Cripto - Programa de Fidelidade na Blockchain",
   description:
     "Um programa de fidelidade revolucionário onde os clientes ganham tokens trocáveis e NFTs colecionáveis, transformando pontos em experiências memoráveis e até renda extra.",
+  icons: {
+    icon: "/logo.png",
+  },
     generator: 'v0.dev'
 }
 
