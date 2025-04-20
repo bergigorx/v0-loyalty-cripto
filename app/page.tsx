@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,13 +8,21 @@ import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User }
 import { RegisterModal } from "@/components/register-modal"
 import { LoginModal } from "@/components/login-modal"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function LandingPage() {
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // Verificar se o parâmetro login=true está presente na URL
+    if (searchParams.get("login") === "true" && !user) {
+      setLoginModalOpen(true)
+    }
+  }, [searchParams, user])
 
   const openRegisterModal = () => {
     setLoginModalOpen(false)
@@ -63,6 +71,12 @@ export default function LandingPage() {
                 className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
               >
                 Marketplace
+              </Link>
+              <Link
+                href="/business/login"
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Para Empresas
               </Link>
             </nav>
           </div>

@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
 import { Label } from "@/components/ui/label"
+import { NFTCard } from "@/components/nft-card"
+import { SellNFTModal } from "@/components/sell-nft-modal"
 
 type NFT = Database["public"]["Tables"]["nfts"]["Row"]
 type Transaction = Database["public"]["Tables"]["transactions"]["Row"] & {
@@ -27,6 +29,8 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [walletAddress, setWalletAddress] = useState("")
+  const [sellModalOpen, setSellModalOpen] = useState(false)
+  const [selectedNft, setSelectedNft] = useState<NFT | null>(null)
   const router = useRouter()
   const supabase = createClientComponentClient<Database>()
 
@@ -154,6 +158,11 @@ export default function DashboardPage() {
         variant: "destructive",
       })
     }
+  }
+
+  const handleSellNFT = (nft: NFT) => {
+    setSelectedNft(nft)
+    setSellModalOpen(true)
   }
 
   const formatDate = (dateString: string) => {
@@ -345,31 +354,14 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                   {userNfts.map((nft) => (
-                    <Card key={nft.id} className="overflow-hidden">
-                      <div className="aspect-square relative bg-gradient-to-br from-purple-100 to-teal-100 dark:from-purple-950/50 dark:to-teal-950/50">
-                        <img
-                          src={nft.image_url || "/placeholder.svg?height=400&width=400"}
-                          alt={nft.name}
-                          className="object-cover w-full h-full"
-                        />
-                        <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">
-                          {nft.rarity}
-                        </div>
-                      </div>
-                      <CardHeader className="p-4">
-                        <CardTitle className="text-lg">{nft.name}</CardTitle>
-                        <CardDescription className="line-clamp-2">{nft.description}</CardDescription>
-                      </CardHeader>
-                      <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                        <div className="flex items-center">
-                          <CreditCard className="h-4 w-4 text-purple-600 mr-1" />
-                          <span className="font-medium text-sm">#{nft.id.slice(0, 8)}</span>
-                        </div>
-                        <Button size="sm" variant="outline" disabled={nft.is_for_sale}>
-                          {nft.is_for_sale ? "À venda" : "Vender NFT"}
-                        </Button>
-                      </CardFooter>
-                    </Card>
+                    <NFTCard
+                      key={nft.id}
+                      nft={nft}
+                      price={nft.price || 0}
+                      showSellOption={true}
+                      isSelling={nft.is_for_sale}
+                      onSell={() => handleSellNFT(nft)}
+                    />
                   ))}
                 </div>
               )}
@@ -468,6 +460,16 @@ export default function DashboardPage() {
           </div>
         </div>
       </footer>
+
+      {selectedNft && (
+        <SellNFTModal
+          open={sellModalOpen}
+          onOpenChange={setSellModalOpen}
+          nft={selectedNft}
+          userId={user?.id || ""}
+          onSuccess={fetchUserData}
+        />
+      )}
     </div>
   )
 }

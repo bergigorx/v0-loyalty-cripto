@@ -4,15 +4,17 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Coins, Search, Tag, ShoppingCart, User } from "lucide-react"
+import { Coins, Search, Tag, User, Store } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { createClientComponentClient } from "@/lib/supabase"
 import type { Database } from "@/types/supabase"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/components/ui/use-toast"
+import { NFTCard } from "@/components/nft-card"
+import { Badge } from "@/components/ui/badge"
 
 type NFT = Database["public"]["Tables"]["nfts"]["Row"]
 type MarketplaceItem = Database["public"]["Tables"]["marketplace_items"]["Row"] & {
@@ -26,18 +28,16 @@ export default function MarketplacePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRarity, setFilterRarity] = useState<string | null>(null)
+  const [filterPartner, setFilterPartner] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<string>("recent")
+  const [partnerCompanies, setPartnerCompanies] = useState<string[]>([])
   const router = useRouter()
   const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
-    if (!user) {
-      router.push("/")
-      return
-    }
-
+    // Remover a verificação de autenticação para permitir visualização sem login
     fetchMarketplaceData()
-  }, [user, router])
+  }, [])
 
   const fetchMarketplaceData = async () => {
     setIsLoading(true)
@@ -60,6 +60,14 @@ export default function MarketplacePage() {
 
       setNfts(nftsData || [])
       setMarketplaceItems(marketplaceData || [])
+
+      // Extrair empresas parceiras únicas
+      const partners = nftsData
+        ?.filter((nft) => nft.partner_company)
+        .map((nft) => nft.partner_company as string)
+        .filter((value, index, self) => value && self.indexOf(value) === index)
+
+      setPartnerCompanies(partners || [])
     } catch (error: any) {
       toast({
         title: "Erro ao carregar dados",
@@ -74,11 +82,12 @@ export default function MarketplacePage() {
   const handleBuyNFT = async (item: MarketplaceItem) => {
     if (!user || !profile) {
       toast({
-        title: "Você precisa estar logado",
-        description: "Faça login para comprar este item.",
+        title: "Login necessário",
+        description: "Você precisa estar logado para comprar este item.",
         variant: "destructive",
       })
-      router.push("/")
+      // Redirecionar para a página inicial com parâmetro para abrir o modal de login
+      router.push("/?login=true")
       return
     }
 
@@ -176,11 +185,13 @@ export default function MarketplacePage() {
   const filteredItems = marketplaceItems.filter((item) => {
     const matchesSearch =
       item.nft?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.nft?.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      item.nft?.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.nft?.partner_company?.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesRarity = !filterRarity || item.nft?.rarity === filterRarity
+    const matchesPartner = !filterPartner || item.nft?.partner_company === filterPartner
 
-    return matchesSearch && matchesRarity
+    return matchesSearch && matchesRarity && matchesPartner
   })
 
   const sortedItems = [...filteredItems].sort((a, b) => {
@@ -213,11 +224,19 @@ export default function MarketplacePage() {
               <Link href="/marketplace" className="flex items-center text-sm font-medium text-foreground">
                 Marketplace
               </Link>
+              {user && (
+                <Link
+                  href="/dashboard"
+                  className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Minha Conta
+                </Link>
+              )}
               <Link
-                href="/dashboard"
+                href="/business/login"
                 className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
               >
-                Minha Conta
+                Para Empresas
               </Link>
             </nav>
           </div>
@@ -228,12 +247,21 @@ export default function MarketplacePage() {
                 <span className="text-sm font-medium">{profile.loya_balance} LOYA</span>
               </div>
             )}
-            <Link href="/dashboard">
-              <Button variant="outline" size="sm" className="hidden sm:flex">
-                <User className="h-4 w-4 mr-2" />
-                Minha Conta
-              </Button>
-            </Link>
+            {user ? (
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" className="hidden sm:flex">
+                  <User className="h-4 w-4 mr-2" />
+                  Minha Conta
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/?login=true">
+                <Button variant="outline" size="sm" className="hidden sm:flex">
+                  <User className="h-4 w-4 mr-2" />
+                  Entrar
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -241,7 +269,9 @@ export default function MarketplacePage() {
         <div className="flex flex-col space-y-6">
           <div className="flex flex-col space-y-2">
             <h1 className="text-3xl font-bold tracking-tight">Marketplace</h1>
-            <p className="text-muted-foreground">Explore e adquira NFTs exclusivos e tokens LOYA</p>
+            <p className="text-muted-foreground">
+              Explore e adquira NFTs exclusivos de empresas parceiras e troque por benefícios reais
+            </p>
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
@@ -254,13 +284,13 @@ export default function MarketplacePage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
               <Select
                 value={filterRarity || "all"}
                 onValueChange={(value) => setFilterRarity(value === "all" ? null : value)}
               >
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Filtrar por raridade" />
+                <SelectTrigger className="w-full md:w-[150px]">
+                  <SelectValue placeholder="Raridade" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas raridades</SelectItem>
@@ -270,8 +300,26 @@ export default function MarketplacePage() {
                   <SelectItem value="legendary">Lendário</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
+
+              <Select
+                value={filterPartner || "all"}
+                onValueChange={(value) => setFilterPartner(value === "all" ? null : value)}
+              >
                 <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Empresa Parceira" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas empresas</SelectItem>
+                  {partnerCompanies.map((partner) => (
+                    <SelectItem key={partner} value={partner}>
+                      {partner}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full md:w-[150px]">
                   <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,9 +331,28 @@ export default function MarketplacePage() {
             </div>
           </div>
 
+          {filterPartner && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="flex items-center gap-1">
+                <Store className="h-3 w-3" />
+                <span>Empresa: {filterPartner}</span>
+                <button className="ml-1 rounded-full hover:bg-muted p-1" onClick={() => setFilterPartner(null)}>
+                  <svg width="12" height="12" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z"
+                      fill="currentColor"
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                    ></path>
+                  </svg>
+                </button>
+              </Badge>
+            </div>
+          )}
+
           <Tabs defaultValue="nfts" className="w-full">
             <TabsList className="mb-4">
-              <TabsTrigger value="nfts">NFTs</TabsTrigger>
+              <TabsTrigger value="nfts">NFTs de Benefícios</TabsTrigger>
               <TabsTrigger value="tokens">Tokens LOYA</TabsTrigger>
             </TabsList>
             <TabsContent value="nfts" className="space-y-4">
@@ -303,37 +370,14 @@ export default function MarketplacePage() {
                   {sortedItems
                     .filter((item) => item.item_type === "NFT" && item.nft)
                     .map((item) => (
-                      <Card key={item.id} className="overflow-hidden">
-                        <div className="aspect-square relative bg-gradient-to-br from-purple-100 to-teal-100 dark:from-purple-950/50 dark:to-teal-950/50">
-                          <img
-                            src={item.nft?.image_url || "/placeholder.svg?height=400&width=400"}
-                            alt={item.nft?.name || "NFT"}
-                            className="object-cover w-full h-full"
-                          />
-                          <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">
-                            {item.nft?.rarity}
-                          </div>
-                        </div>
-                        <CardHeader className="p-4">
-                          <CardTitle className="text-lg">{item.nft?.name}</CardTitle>
-                          <CardDescription className="line-clamp-2">{item.nft?.description}</CardDescription>
-                        </CardHeader>
-                        <CardFooter className="p-4 pt-0 flex justify-between items-center">
-                          <div className="flex items-center">
-                            <Coins className="h-4 w-4 text-purple-600 mr-1" />
-                            <span className="font-bold">{item.price} LOYA</span>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => handleBuyNFT(item)}
-                            disabled={!user || (profile?.loya_balance || 0) < (item.price || 0)}
-                            className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                          >
-                            <ShoppingCart className="h-4 w-4 mr-1" />
-                            Comprar
-                          </Button>
-                        </CardFooter>
-                      </Card>
+                      <NFTCard
+                        key={item.id}
+                        nft={item.nft}
+                        price={item.price || 0}
+                        onBuy={() => handleBuyNFT(item)}
+                        disableBuy={!user || (profile?.loya_balance || 0) < (item.price || 0)}
+                        isAuthenticated={!!user}
+                      />
                     ))}
                 </div>
               )}
@@ -374,7 +418,7 @@ export default function MarketplacePage() {
                             disabled={!user || (profile?.loya_balance || 0) < (item.price || 0)}
                             className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
                           >
-                            <ShoppingCart className="h-4 w-4 mr-1" />
+                            <Tag className="h-4 w-4 mr-1" />
                             Comprar
                           </Button>
                         </CardFooter>
