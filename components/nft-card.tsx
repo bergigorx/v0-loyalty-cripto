@@ -3,23 +3,34 @@
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Coins, ShoppingCart, Tag, Calendar, LogIn, ImageOff, Loader2 } from "lucide-react"
+import { Coins, ShoppingCart, Tag, Calendar, LogIn, ImageOff, Loader2, ExternalLink } from "lucide-react"
 import { RarityBadge } from "@/components/rarity-badge"
 import { PartnerLogo } from "@/components/partner-logo"
 import { formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import Link from "next/link"
+import { NFTDetailModal } from "@/components/nft-detail-modal"
 
 interface NFTCardProps {
   nft: any
   price: number
-  onBuy?: () => void
+  onBuy?: () => Promise<void>
   onSell?: () => void
   disableBuy?: boolean
   showSellOption?: boolean
   isSelling?: boolean
   isAuthenticated?: boolean
   isProcessing?: boolean
+  userBalance?: number
+  isOwner?: boolean
+  bids?: Array<{
+    id: string
+    bidder_id: string
+    bidder_name: string
+    amount: number
+    created_at: string
+  }>
+  onBid?: (bidAmount: number) => Promise<void>
 }
 
 export function NFTCard({
@@ -27,15 +38,20 @@ export function NFTCard({
   price,
   onBuy,
   onSell,
+  onBid,
   disableBuy = false,
   showSellOption = false,
   isSelling = false,
   isAuthenticated = false,
   isProcessing = false,
+  userBalance = 0,
+  isOwner = false,
+  bids = [],
 }: NFTCardProps) {
   const hasExpiration = nft.expiration_date && new Date(nft.expiration_date) > new Date()
   const isPartnerNFT = !!nft.partner_company
   const [imageError, setImageError] = useState(false)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
 
   // Função para gerar uma imagem de fallback baseada no nome do NFT
   const generateFallbackImage = () => {
@@ -66,93 +82,121 @@ export function NFTCard({
   }
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
-      <div className="aspect-square relative bg-gradient-to-br from-purple-100 to-teal-100 dark:from-purple-950/50 dark:to-teal-950/50 overflow-hidden">
-        {imageError ? (
-          generateFallbackImage()
-        ) : (
-          <img
-            src={nft.image_url || "/placeholder.svg?height=400&width=400"}
-            alt={nft.name || "NFT"}
-            className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
-            onError={() => setImageError(true)}
-          />
-        )}
-        <div className="absolute top-2 right-2">
-          <RarityBadge rarity={nft.rarity || "common"} />
-        </div>
-        {isPartnerNFT && (
-          <div className="absolute top-2 left-2">
-            <PartnerLogo partner={nft.partner_company} />
+    <>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div
+          className="aspect-square relative bg-gradient-to-br from-purple-100 to-teal-100 dark:from-purple-950/50 dark:to-teal-950/50 overflow-hidden cursor-pointer"
+          onClick={() => setDetailModalOpen(true)}
+        >
+          {imageError ? (
+            generateFallbackImage()
+          ) : (
+            <img
+              src={nft.image_url || "/placeholder.svg?height=400&width=400"}
+              alt={nft.name || "NFT"}
+              className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+              onError={() => setImageError(true)}
+            />
+          )}
+          <div className="absolute top-2 right-2">
+            <RarityBadge rarity={nft.rarity || "common"} />
           </div>
-        )}
-      </div>
-      <CardHeader className="p-4">
-        <CardTitle className="text-lg">{nft.name}</CardTitle>
-        <CardDescription className="line-clamp-2">{nft.description}</CardDescription>
-      </CardHeader>
-      {isPartnerNFT && nft.benefit_description && (
-        <CardContent className="px-4 pb-0">
-          <div className="bg-muted p-2 rounded-md text-sm">
-            <p className="font-medium mb-1">Benefício:</p>
-            <p className="text-muted-foreground">{nft.benefit_description}</p>
-            {hasExpiration && (
-              <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                <Calendar className="h-3 w-3 mr-1" />
-                <span>
-                  Expira em{" "}
-                  {formatDistanceToNow(new Date(nft.expiration_date), {
-                    addSuffix: true,
-                    locale: ptBR,
-                  })}
-                </span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      )}
-      <CardFooter className="p-4 pt-4 flex justify-between items-center">
-        <div className="flex items-center">
-          <Coins className="h-4 w-4 text-purple-600 mr-1" />
-          <span className="font-bold">{price} LOYA</span>
+          {isPartnerNFT && (
+            <div className="absolute top-2 left-2">
+              <PartnerLogo partner={nft.partner_company} />
+            </div>
+          )}
         </div>
-        {onBuy && !isAuthenticated ? (
-          <Link href="/?login=true">
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-            >
-              <LogIn className="h-4 w-4 mr-1" />
-              Entrar para comprar
+        <CardHeader className="p-4">
+          <CardTitle className="text-lg">{nft.name}</CardTitle>
+          <CardDescription className="line-clamp-2">{nft.description}</CardDescription>
+        </CardHeader>
+        {isPartnerNFT && nft.benefit_description && (
+          <CardContent className="px-4 pb-0">
+            <div className="bg-muted p-2 rounded-md text-sm">
+              <p className="font-medium mb-1">Benefício:</p>
+              <p className="text-muted-foreground line-clamp-2">{nft.benefit_description}</p>
+              {hasExpiration && (
+                <div className="flex items-center mt-2 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3 mr-1" />
+                  <span>
+                    Expira em{" "}
+                    {formatDistanceToNow(new Date(nft.expiration_date), {
+                      addSuffix: true,
+                      locale: ptBR,
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+        <CardFooter className="p-4 pt-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <Coins className="h-4 w-4 text-purple-600 mr-1" />
+            <span className="font-bold">{price} LOYA</span>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setDetailModalOpen(true)}>
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Detalhes
             </Button>
-          </Link>
-        ) : onBuy ? (
-          <Button
-            size="sm"
-            onClick={onBuy}
-            disabled={disableBuy || isProcessing}
-            className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                Processando...
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="h-4 w-4 mr-1" />
-                Comprar
-              </>
+
+            {onBuy && !isAuthenticated ? (
+              <Link href="/?login=true">
+                <Button
+                  size="sm"
+                  className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                >
+                  <LogIn className="h-4 w-4 mr-1" />
+                  Entrar
+                </Button>
+              </Link>
+            ) : onBuy ? (
+              <Button
+                size="sm"
+                onClick={onBuy}
+                disabled={disableBuy || isProcessing}
+                className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="h-4 w-4 mr-1" />
+                    Comprar
+                  </>
+                )}
+              </Button>
+            ) : null}
+            {showSellOption && (
+              <Button size="sm" variant={isSelling ? "destructive" : "outline"} onClick={onSell} disabled={isSelling}>
+                <Tag className="h-4 w-4 mr-1" />
+                {isSelling ? "À venda" : "Vender"}
+              </Button>
             )}
-          </Button>
-        ) : null}
-        {showSellOption && (
-          <Button size="sm" variant={isSelling ? "destructive" : "outline"} onClick={onSell} disabled={isSelling}>
-            <Tag className="h-4 w-4 mr-1" />
-            {isSelling ? "À venda" : "Vender NFT"}
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
+          </div>
+        </CardFooter>
+      </Card>
+
+      <NFTDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        nft={nft}
+        price={price}
+        isOwner={isOwner}
+        isAuthenticated={isAuthenticated}
+        userBalance={userBalance}
+        onBuy={onBuy}
+        onBid={onBid}
+        onSell={onSell}
+        isSelling={isSelling}
+        isProcessing={isProcessing}
+        bids={bids}
+      />
+    </>
   )
 }

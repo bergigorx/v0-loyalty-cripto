@@ -57,3 +57,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Animação para a roleta */
+.transition-transform.duration-5000 {
+  transition-duration: 5000ms;
+  transition-timing-function: cubic-bezier(0.17, 0.67, 0.21, 0.99);
+}
