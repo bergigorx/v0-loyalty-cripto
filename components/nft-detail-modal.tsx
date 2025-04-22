@@ -275,7 +275,7 @@ export function NFTDetailModal({
 
                   {onBid && (
                     <div className="space-y-2">
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <div className="flex-1">
                           <Label htmlFor="bidAmount">Valor do Lance</Label>
                           <Input
@@ -287,7 +287,7 @@ export function NFTDetailModal({
                           />
                         </div>
                         <Button
-                          className="self-end bg-gradient-to-r from-teal-500 to-purple-600 hover:from-teal-600 hover:to-purple-700"
+                          className="sm:self-end bg-gradient-to-r from-teal-500 to-purple-600 hover:from-teal-600 hover:to-purple-700"
                           onClick={handleBid}
                           disabled={!isAuthenticated || userBalance < bidAmount || isSubmittingBid}
                         >

@@ -33,6 +33,9 @@ import { DailyRewardWheel } from "@/components/daily-reward-wheel"
 import { ProgressBar } from "@/components/progress-bar"
 import { MissionsPanel } from "@/components/missions-panel"
 import { SpecialNFTs } from "@/components/special-nfts"
+import { MobileMenu } from "@/components/mobile-menu"
+// Adicione o import
+import { FloatingActionButton } from "@/components/floating-action-button"
 
 type NFT = Database["public"]["Tables"]["nfts"]["Row"]
 type Transaction = Database["public"]["Tables"]["transactions"]["Row"] & {
@@ -620,17 +623,26 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium">{profile.loya_balance} LOYA</span>
               </div>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
+            <div className="hidden md:block">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => {
+                  await signOut()
+                  router.push("/")
+                }}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
+            <MobileMenu
+              activeRoute="dashboard"
+              onSignOut={async () => {
                 await signOut()
                 router.push("/")
               }}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sair
-            </Button>
+            />
           </div>
         </div>
       </header>
@@ -962,6 +974,9 @@ export default function DashboardPage() {
         onRewardClaimed={handleRewardClaimed}
         dailyRewardClaimed={dailyRewardClaimed}
       />
+      {profile && (
+        <FloatingActionButton action="balance" balance={profile.loya_balance} onClick={() => claimDailyReward()} />
+      )}
     </div>
   )
 }

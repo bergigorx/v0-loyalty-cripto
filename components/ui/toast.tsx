@@ -7,6 +7,9 @@ import { cn } from "@/lib/utils"
 
 const ToastProvider = ToastPrimitives.Provider
 
+// Modificar o ToastViewport para melhorar a experiência em dispositivos móveis
+// Substituir a definição do ToastViewport
+
 const ToastViewport = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Viewport>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Viewport>

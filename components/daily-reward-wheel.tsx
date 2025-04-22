@@ -1,15 +1,10 @@
 "use client"
 
+import { DialogFooter } from "@/components/ui/dialog"
+
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Coins, Gift, Clock } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import confetti from "canvas-confetti"
@@ -228,7 +223,7 @@ export function DailyRewardWheel({ open, onOpenChange, onRewardClaimed, dailyRew
         </DialogHeader>
 
         <div className="flex flex-col items-center justify-center py-4">
-          <div className="relative w-64 h-64 mb-4">
+          <div className="relative w-64 h-64 mb-4 max-w-full">
             {/* Ponteiro fixo no topo */}
             <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="w-0 h-0 border-l-[10px] border-r-[10px] border-t-[20px] border-l-transparent border-r-transparent border-t-red-500"></div>
@@ -264,7 +259,7 @@ export function DailyRewardWheel({ open, onOpenChange, onRewardClaimed, dailyRew
             <Button
               onClick={spinWheel}
               disabled={isSpinning}
-              className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+              className="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
             >
               {isSpinning ? "Girando..." : "Girar Roleta"}
             </Button>

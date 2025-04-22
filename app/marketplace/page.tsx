@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Coins, Search, User, Store, Menu, X } from "lucide-react"
+import { Coins, Search, User, Store } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { createClientComponentClient } from "@/lib/supabase"
 import type { Database } from "@/types/supabase"
@@ -15,6 +15,9 @@ import { NFTCard } from "@/components/nft-card"
 import { Badge } from "@/components/ui/badge"
 import { executeTransaction } from "@/lib/polygon-service"
 import { Logo } from "@/components/logo"
+import { MobileMenu } from "@/components/mobile-menu"
+// Adicione o import
+import { FloatingActionButton } from "@/components/floating-action-button"
 
 type NFT = Database["public"]["Tables"]["nfts"]["Row"]
 type MarketplaceItem = Database["public"]["Tables"]["marketplace_items"]["Row"] & {
@@ -277,118 +280,24 @@ export default function MarketplacePage() {
             </nav>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            {/* Menu para dispositivos móveis */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              <span className="sr-only">Menu</span>
-            </Button>
-
-            {/* Botões para desktop */}
             {profile && (
               <div className="hidden md:flex items-center mr-4 bg-purple-100 dark:bg-purple-900/20 px-3 py-1 rounded-full">
                 <Coins className="h-4 w-4 text-purple-600 mr-2" />
                 <span className="text-sm font-medium">{profile.loya_balance} LOYA</span>
               </div>
             )}
-            {user ? (
-              <Link href="/dashboard" className="hidden md:block">
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  Minha Conta
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/?login=true" className="hidden md:block">
-                <Button variant="outline" size="sm">
-                  <User className="h-4 w-4 mr-2" />
-                  Entrar
-                </Button>
-              </Link>
-            )}
-            {user && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  await signOut()
-                  router.push("/")
-                }}
-              >
-                Sair
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Menu móvel expansível */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-background">
-            <div className="container py-4 space-y-4">
-              <nav className="flex flex-col space-y-4">
-                <Link
-                  href="/"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Início
-                </Link>
-                <Link
-                  href="/marketplace"
-                  className="text-sm font-medium text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Marketplace
-                </Link>
-                {user && (
-                  <Link
-                    href="/dashboard"
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Minha Conta
-                  </Link>
-                )}
-                <Link
-                  href="/business/login"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Para Empresas
-                </Link>
-              </nav>
-
-              {profile && (
-                <div className="flex items-center bg-purple-100 dark:bg-purple-900/20 px-3 py-1 rounded-full w-fit">
-                  <Coins className="h-4 w-4 text-purple-600 mr-2" />
-                  <span className="text-sm font-medium">{profile.loya_balance} LOYA</span>
-                </div>
-              )}
-
-              <div className="flex flex-col space-y-2">
-                {user ? (
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full">
+            <div className="hidden md:flex items-center space-x-2">
+              {user ? (
+                <>
+                  <Link href="/dashboard">
+                    <Button variant="outline" size="sm">
                       <User className="h-4 w-4 mr-2" />
                       Minha Conta
                     </Button>
                   </Link>
-                ) : (
-                  <Link href="/?login=true" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full">
-                      <User className="h-4 w-4 mr-2" />
-                      Entrar
-                    </Button>
-                  </Link>
-                )}
-                {user && (
                   <Button
                     variant="outline"
-                    className="w-full"
+                    size="sm"
                     onClick={async () => {
                       await signOut()
                       router.push("/")
@@ -396,11 +305,25 @@ export default function MarketplacePage() {
                   >
                     Sair
                   </Button>
-                )}
-              </div>
+                </>
+              ) : (
+                <Link href="/?login=true">
+                  <Button variant="outline" size="sm">
+                    <User className="h-4 w-4 mr-2" />
+                    Entrar
+                  </Button>
+                </Link>
+              )}
             </div>
+            <MobileMenu
+              activeRoute="marketplace"
+              onSignOut={async () => {
+                await signOut()
+                router.push("/")
+              }}
+            />
           </div>
-        )}
+        </div>
       </header>
 
       <main className="flex-1 container py-8">
@@ -528,6 +451,7 @@ export default function MarketplacePage() {
           </div>
         </div>
       </footer>
+      {user && profile && <FloatingActionButton action="balance" balance={profile.loya_balance} />}
     </div>
   )
 }

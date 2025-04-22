@@ -4,12 +4,22 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User, Menu, X } from "lucide-react"
+import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User } from "lucide-react"
 import { RegisterModal } from "@/components/register-modal"
 import { LoginModal } from "@/components/login-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Logo } from "@/components/logo"
+import { MobileMenu } from "@/components/mobile-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 export default function LandingPage() {
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
@@ -18,6 +28,7 @@ export default function LandingPage() {
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [contactModalOpen, setContactModalOpen] = useState(false)
 
   useEffect(() => {
     // Verificar se o parâmetro login=true está presente na URL
@@ -72,7 +83,13 @@ export default function LandingPage() {
                 Marketplace
               </Link>
               <Link
-                href="/business/login"
+                href="/buy-tokens"
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+              >
+                Comprar LOYA
+              </Link>
+              <Link
+                href="/business/metrics"
                 className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
               >
                 Para Empresas
@@ -80,18 +97,6 @@ export default function LandingPage() {
             </nav>
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            {/* Menu para dispositivos móveis */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              <span className="sr-only">Menu</span>
-            </Button>
-
-            {/* Botões para desktop */}
             <nav className="hidden md:flex items-center space-x-2">
               {user ? (
                 <>
@@ -125,101 +130,18 @@ export default function LandingPage() {
                 </>
               )}
             </nav>
+            <MobileMenu
+              activeRoute="home"
+              onSignOut={async () => {
+                await signOut()
+                router.push("/")
+              }}
+            />
           </div>
         </div>
-
-        {/* Menu móvel expansível */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-background">
-            <div className="container py-4 space-y-4">
-              <nav className="flex flex-col space-y-4">
-                <Link
-                  href="#features"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Recursos
-                </Link>
-                <Link
-                  href="#how-it-works"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Como Funciona
-                </Link>
-                <Link
-                  href="#benefits"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Benefícios
-                </Link>
-                <Link
-                  href="/marketplace"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Marketplace
-                </Link>
-                <Link
-                  href="/business/login"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Para Empresas
-                </Link>
-              </nav>
-
-              <div className="flex flex-col space-y-2">
-                {user ? (
-                  <>
-                    <Button variant="outline" className="w-full" onClick={handleProfileClick}>
-                      <User className="h-4 w-4 mr-2" />
-                      Minha Conta
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full"
-                      onClick={async () => {
-                        setMobileMenuOpen(false)
-                        await signOut()
-                        router.push("/")
-                      }}
-                    >
-                      Sair
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        openLoginModal()
-                        setMobileMenuOpen(false)
-                      }}
-                    >
-                      Entrar
-                    </Button>
-                    <Button
-                      className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                      onClick={() => {
-                        openRegisterModal()
-                        setMobileMenuOpen(false)
-                      }}
-                    >
-                      Registrar
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </header>
 
       <main className="flex-1">
-        {/* Conteúdo da página principal permanece o mesmo */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-b from-background to-purple-50 dark:from-background dark:to-purple-950/20">
           <div className="container px-4 md:px-6">
             <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_500px]">
@@ -249,7 +171,9 @@ export default function LandingPage() {
                       Comece Agora
                     </Button>
                   )}
-                  <Button variant="outline">Saiba Mais</Button>
+                  <Button variant="outline" onClick={() => router.push("/buy-tokens")}>
+                    Comprar Tokens
+                  </Button>
                 </div>
               </div>
               <div className="flex items-center justify-center">
@@ -488,17 +412,14 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="mx-auto w-full max-w-sm space-y-2">
-                <form className="flex flex-col sm:flex-row gap-2">
-                  <Input type="email" placeholder="Digite seu email" className="max-w-lg flex-1" />
-                  <Button
-                    type="submit"
-                    className="bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                  >
-                    Comece Agora
-                  </Button>
-                </form>
+                <Button
+                  onClick={() => setContactModalOpen(true)}
+                  className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+                >
+                  Entre em Contato
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Ao se inscrever, você concorda com nossos{" "}
+                  Ao entrar em contato, você concorda com nossos{" "}
                   <Link href="#" className="underline underline-offset-2">
                     Termos e Condições
                   </Link>
@@ -541,8 +462,8 @@ export default function LandingPage() {
               <h3 className="text-sm font-medium">Para Empresas</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Soluções
+                  <Link href="/business/metrics" className="text-sm text-muted-foreground hover:text-foreground">
+                    Métricas
                   </Link>
                 </li>
                 <li>
@@ -561,8 +482,8 @@ export default function LandingPage() {
               <h3 className="text-sm font-medium">Para Clientes</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Carteira
+                  <Link href="/buy-tokens" className="text-sm text-muted-foreground hover:text-foreground">
+                    Comprar LOYA
                   </Link>
                 </li>
                 <li>
@@ -571,8 +492,8 @@ export default function LandingPage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-                    Recompensas
+                  <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+                    Minha Conta
                   </Link>
                 </li>
               </ul>
@@ -617,6 +538,47 @@ export default function LandingPage() {
       {/* Modais de login e registro */}
       <RegisterModal open={registerModalOpen} onOpenChange={setRegisterModalOpen} />
       <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} onRegisterClick={openRegisterModal} />
+      {/* Modal de contato */}
+      <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Entre em contato</DialogTitle>
+            <DialogDescription>Preencha o formulário abaixo para saber mais sobre nossa plataforma.</DialogDescription>
+          </DialogHeader>
+          <form className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome completo</Label>
+              <Input id="name" placeholder="Seu nome completo" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="seu@email.com" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input id="phone" placeholder="(00) 00000-0000" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="state">Estado</Label>
+                <Input id="state" placeholder="Estado" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="city">Cidade</Label>
+                <Input id="city" placeholder="Cidade" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+              >
+                Enviar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
