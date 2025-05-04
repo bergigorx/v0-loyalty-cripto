@@ -64,8 +64,8 @@ export function MobileMenu({ activeRoute, onSignOut }: MobileMenuProps) {
       </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm pt-16 touch-none">
-          <div className="container flex flex-col gap-6 p-4">
+        <div className="fixed inset-0 z-50 bg-background shadow-lg">
+          <div className="container flex flex-col gap-6 p-4 pt-16 touch-none">
             <nav className="flex flex-col space-y-4">
               <Link
                 href="/"
@@ -124,7 +124,7 @@ export function MobileMenu({ activeRoute, onSignOut }: MobileMenuProps) {
             {profile && (
               <div className="flex items-center justify-center bg-purple-100 dark:bg-purple-900/20 px-4 py-3 rounded-lg my-2">
                 <Coins className="h-5 w-5 text-purple-600 mr-2" />
-                <span className="text-base font-medium">{profile.loya_balance} LOYA</span>
+                <span className="text-base font-medium">{profile.loya_balance || 0} LOYA</span>
               </div>
             )}
 

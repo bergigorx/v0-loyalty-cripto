@@ -3,12 +3,10 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LogOut, Loader2, Check, Copy, ExternalLink } from "lucide-react"
-import { cafeNFTContract, loadMintedNFTs } from "@/lib/blockchain-service"
+import { LogOut, ExternalLink } from "lucide-react"
+import { loadMintedNFTs } from "@/lib/blockchain-service"
 import { toast } from "@/components/ui/use-toast"
 import Link from "next/link"
 import type { MintedNFT } from "@/types/business"
@@ -16,10 +14,7 @@ import { Logo } from "@/components/logo"
 
 export default function BusinessDashboardPage() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [customerAddress, setCustomerAddress] = useState("")
-  const [isMinting, setIsMinting] = useState(false)
   const [mintedNFTs, setMintedNFTs] = useState<MintedNFT[]>([])
-  const [lastMintedNFT, setLastMintedNFT] = useState<MintedNFT | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -53,66 +48,6 @@ export default function BusinessDashboardPage() {
         variant: "destructive",
       })
     }
-  }
-
-  const handleMintNFT = async () => {
-    if (!customerAddress) {
-      toast({
-        title: "Endereço inválido",
-        description: "Por favor, insira um endereço de carteira válido.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!customerAddress.startsWith("0x") || customerAddress.length !== 42) {
-      toast({
-        title: "Endereço inválido",
-        description: "O endereço da carteira deve começar com '0x' e ter 42 caracteres.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsMinting(true)
-    try {
-      const result = await cafeNFTContract.cafeMint(customerAddress)
-
-      toast({
-        title: "NFT mintado com sucesso!",
-        description: "O NFT foi enviado para o cliente.",
-      })
-
-      // Atualizar a lista de NFTs
-      const nfts = loadMintedNFTs()
-      const updatedNFTs = nfts.filter((nft) => nft.businessAddress === walletAddress)
-      setMintedNFTs(updatedNFTs)
-
-      // Definir o último NFT mintado
-      const lastNFT = updatedNFTs.find((nft) => nft.transactionHash === result.transactionHash)
-      if (lastNFT) {
-        setLastMintedNFT(lastNFT)
-      }
-
-      // Limpar o campo de endereço
-      setCustomerAddress("")
-    } catch (error: any) {
-      toast({
-        title: "Erro ao mintar NFT",
-        description: error.message || "Ocorreu um erro ao mintar o NFT.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsMinting(false)
-    }
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({
-      title: "Copiado!",
-      description: "O texto foi copiado para a área de transferência.",
-    })
   }
 
   const formatDate = (timestamp: number) => {
@@ -164,128 +99,15 @@ export default function BusinessDashboardPage() {
       <main className="flex-1 container py-8">
         <div className="flex flex-col space-y-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard da Cafeteria</h1>
-            <p className="text-muted-foreground">Gerencie seus NFTs de fidelidade e recompense seus clientes</p>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard da Empresa</h1>
+            <p className="text-muted-foreground">Gerencie seus NFTs de fidelidade e acompanhe métricas</p>
           </div>
 
-          <Tabs defaultValue="mint" className="w-full">
+          <Tabs defaultValue="history" className="w-full">
             <TabsList className="mb-4">
-              <TabsTrigger value="mint">Mintar NFT</TabsTrigger>
               <TabsTrigger value="history">Histórico</TabsTrigger>
+              <TabsTrigger value="metrics">Métricas</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="mint" className="space-y-4">
-              <Card className="shadow-md">
-                <CardHeader>
-                  <CardTitle>Mintar NFT de Fidelidade</CardTitle>
-                  <CardDescription>Crie um NFT de fidelidade para seu cliente na rede Polygon</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-muted p-4 rounded-lg">
-                    <h3 className="font-medium mb-2">Passo a passo</h3>
-                    <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground">
-                      <li className="flex items-start">
-                        <span
-                          className={`mr-2 mt-0.5 rounded-full bg-purple-100 dark:bg-purple-900/20 p-1 ${walletAddress ? "text-green-600" : "text-muted-foreground"}`}
-                        >
-                          {walletAddress ? <Check className="h-3 w-3" /> : "1"}
-                        </span>
-                        <span>Conecte sua carteira</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2 mt-0.5 rounded-full bg-purple-100 dark:bg-purple-900/20 p-1 text-muted-foreground">
-                          {customerAddress ? <Check className="h-3 w-3 text-green-600" /> : "2"}
-                        </span>
-                        <span>Cole o endereço do cliente</span>
-                      </li>
-                      <li className="flex items-start">
-                        <span className="mr-2 mt-0.5 rounded-full bg-purple-100 dark:bg-purple-900/20 p-1 text-muted-foreground">
-                          3
-                        </span>
-                        <span>Clique em "Mintar NFT"</span>
-                      </li>
-                    </ol>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="customerAddress">Endereço da carteira do cliente</Label>
-                    <Input
-                      id="customerAddress"
-                      placeholder="0x..."
-                      value={customerAddress}
-                      onChange={(e) => setCustomerAddress(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Insira o endereço da carteira Ethereum do cliente que receberá o NFT
-                    </p>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex flex-col gap-4">
-                  <Button
-                    className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                    onClick={handleMintNFT}
-                    disabled={isMinting || !customerAddress}
-                  >
-                    {isMinting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processando...
-                      </>
-                    ) : (
-                      <>Mintar NFT</>
-                    )}
-                  </Button>
-
-                  {lastMintedNFT && (
-                    <div className="w-full bg-green-100 dark:bg-green-900/20 p-4 rounded-lg">
-                      <h3 className="font-medium text-green-800 dark:text-green-400 flex items-center gap-2 mb-2">
-                        <Check className="h-4 w-4" />
-                        NFT mintado com sucesso!
-                      </h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Cliente:</span>
-                          <span className="font-mono flex items-center">
-                            {truncateAddress(lastMintedNFT.customerAddress)}
-                            <button
-                              onClick={() => copyToClipboard(lastMintedNFT.customerAddress)}
-                              className="ml-1 text-muted-foreground hover:text-foreground"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </button>
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Hash da transação:</span>
-                          <span className="font-mono flex items-center">
-                            {truncateAddress(lastMintedNFT.transactionHash || "")}
-                            <button
-                              onClick={() => copyToClipboard(lastMintedNFT.transactionHash || "")}
-                              className="ml-1 text-muted-foreground hover:text-foreground"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </button>
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Data:</span>
-                          <span>{formatDate(lastMintedNFT.mintedAt)}</span>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <Link
-                          href="/marketplace"
-                          className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 flex items-center"
-                        >
-                          Ver no Marketplace
-                          <ExternalLink className="ml-1 h-3 w-3" />
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </CardFooter>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="history" className="space-y-4">
               <Card>
@@ -321,6 +143,45 @@ export default function BusinessDashboardPage() {
                       ))}
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="metrics" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Métricas de Desempenho</CardTitle>
+                  <CardDescription>Acompanhe o desempenho dos seus NFTs de fidelidade</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Total de NFTs</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{mintedNFTs.length}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Clientes Únicos</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">
+                          {new Set(mintedNFTs.map((nft) => nft.customerAddress)).size}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Taxa de Resgate</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">78%</div>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

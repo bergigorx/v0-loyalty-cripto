@@ -1,59 +1,67 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { Coins, Gift, ShoppingBag } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Coins, Gift } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 interface FloatingActionButtonProps {
-  action: "reward" | "shop" | "balance"
-  onClick?: () => void
+  action: "balance" | "reward"
   balance?: number
-  className?: string
+  onClick?: () => void
 }
 
-export function FloatingActionButton({ action, onClick, balance, className }: FloatingActionButtonProps) {
-  const router = useRouter()
+export function FloatingActionButton({ action, balance, onClick }: FloatingActionButtonProps) {
+  const [isVisible, setIsVisible] = useState(true)
+  const [lastScrollY, setLastScrollY] = useState(0)
+  const { profile } = useAuth()
 
-  const handleClick = () => {
-    if (onClick) {
-      onClick()
-      return
+  // Usar o saldo do perfil se não for fornecido como prop
+  const displayBalance = balance !== undefined ? balance : profile?.loya_balance || 0
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY
+
+      // Esconder quando rolar para baixo, mostrar quando rolar para cima
+      if (currentScrollY > lastScrollY) {
+        setIsVisible(false)
+      } else {
+        setIsVisible(true)
+      }
+
+      setLastScrollY(currentScrollY)
     }
 
-    // Ações padrão
-    switch (action) {
-      case "shop":
-        router.push("/marketplace")
-        break
-      case "balance":
-        router.push("/dashboard")
-        break
-      default:
-        break
+    window.addEventListener("scroll", handleScroll, { passive: true })
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
     }
-  }
+  }, [lastScrollY])
 
   return (
-    <Button
-      onClick={handleClick}
-      className={cn(
-        "fixed bottom-4 right-4 z-50 rounded-full shadow-lg md:hidden",
-        action === "reward" && "bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600",
-        action === "shop" && "bg-gradient-to-r from-teal-500 to-purple-600 hover:from-teal-600 hover:to-purple-700",
-        action === "balance" && "bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600",
-        className,
-      )}
-      size="lg"
+    <div
+      className={`fixed bottom-6 right-4 z-40 transition-transform duration-300 ${
+        isVisible ? "translate-y-0" : "translate-y-24"
+      }`}
     >
-      {action === "reward" && <Gift className="h-5 w-5" />}
-      {action === "shop" && <ShoppingBag className="h-5 w-5" />}
-      {action === "balance" && (
-        <div className="flex items-center">
-          <Coins className="h-5 w-5 mr-2" />
-          <span>{balance || 0}</span>
-        </div>
-      )}
-    </Button>
+      <Button
+        onClick={onClick}
+        className="rounded-full h-14 px-4 shadow-lg bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
+      >
+        {action === "balance" ? (
+          <>
+            <Coins className="h-5 w-5 mr-2" />
+            <span className="font-medium">{displayBalance} LOYA</span>
+          </>
+        ) : (
+          <>
+            <Gift className="h-5 w-5 mr-2" />
+            <span className="font-medium">Recompensa</span>
+          </>
+        )}
+      </Button>
+    </div>
   )
 }

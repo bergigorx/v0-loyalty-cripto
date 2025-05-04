@@ -31,25 +31,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const fetchSession = async () => {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
+      setIsLoading(true)
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
 
-      if (error) {
-        console.error("Error fetching session:", error)
+        if (error) {
+          console.error("Error fetching session:", error)
+          return
+        }
+
+        setSession(session)
+        setUser(session?.user ?? null)
+
+        if (session?.user) {
+          await fetchProfile(session.user.id)
+        }
+      } catch (err) {
+        console.error("Unexpected error during session fetch:", err)
+      } finally {
         setIsLoading(false)
-        return
       }
-
-      setSession(session)
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        await fetchProfile(session.user.id)
-      }
-
-      setIsLoading(false)
     }
 
     fetchSession()
@@ -57,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email)
+
       setSession(session)
       setUser(session?.user ?? null)
 
@@ -67,22 +73,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setIsLoading(false)
+
+      // Forçar atualização da página quando o usuário fizer login
+      if (event === "SIGNED_IN") {
+        router.refresh()
+      }
     })
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [supabase, router])
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+    try {
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
-    if (error) {
-      console.error("Error fetching profile:", error)
-      return
+      if (error) {
+        console.error("Error fetching profile:", error)
+        return
+      }
+
+      setProfile(data)
+    } catch (err) {
+      console.error("Unexpected error during profile fetch:", err)
     }
-
-    setProfile(data)
   }
 
   const refreshProfile = async () => {
@@ -112,7 +127,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push("/")
 
       // Forçar um recarregamento da página para garantir que todos os estados sejam limpos
-      window.location.href = "/"
+      setTimeout(() => {
+        window.location.href = "/"
+      }, 100)
     } catch (error) {
       console.error("Error signing out:", error)
     }

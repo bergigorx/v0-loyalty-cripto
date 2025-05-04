@@ -1,81 +1,14 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, AlertCircle, Loader2 } from "lucide-react"
-import { connectWallet, checkIsOwner } from "@/lib/blockchain-service"
-import { toast } from "@/components/ui/use-toast"
+import { AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { Logo } from "@/components/logo"
 
 export default function BusinessLoginPage() {
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isCheckingOwner, setIsCheckingOwner] = useState(false)
-  const [walletAddress, setWalletAddress] = useState<string | null>(null)
-  const [isOwner, setIsOwner] = useState(false)
   const router = useRouter()
-
-  const handleConnectWallet = async () => {
-    setIsConnecting(true)
-    try {
-      const address = await connectWallet()
-      setWalletAddress(address)
-
-      if (address) {
-        setIsCheckingOwner(true)
-        const ownerStatus = await checkIsOwner(address)
-        setIsOwner(ownerStatus)
-        setIsCheckingOwner(false)
-
-        if (ownerStatus) {
-          toast({
-            title: "Carteira conectada com sucesso!",
-            description: "Você foi identificado como dono de uma cafeteria.",
-          })
-
-          // Salvar o endereço no localStorage para persistir a sessão
-          localStorage.setItem("businessWalletAddress", address)
-
-          // Redirecionar para o dashboard
-          router.push("/business/dashboard")
-        } else {
-          toast({
-            title: "Acesso negado",
-            description: "Esta carteira não está autorizada como dono de uma cafeteria.",
-            variant: "destructive",
-          })
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro ao conectar carteira",
-        description: error.message || "Ocorreu um erro ao conectar sua carteira.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsConnecting(false)
-    }
-  }
-
-  // Para fins de demonstração, vamos permitir o acesso mesmo sem ser dono
-  const handleDemoAccess = () => {
-    const demoAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-    setWalletAddress(demoAddress)
-    setIsOwner(true)
-
-    // Salvar o endereço no localStorage para persistir a sessão
-    localStorage.setItem("businessWalletAddress", demoAddress)
-
-    toast({
-      title: "Modo demonstração ativado",
-      description: "Você está acessando como dono de uma cafeteria no modo demonstração.",
-    })
-
-    // Redirecionar para o dashboard
-    router.push("/business/dashboard")
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -109,63 +42,23 @@ export default function BusinessLoginPage() {
           <Card className="shadow-lg">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl">Área de Empresas</CardTitle>
-              <CardDescription>Conecte sua carteira para acessar o painel de controle da sua cafeteria</CardDescription>
+              <CardDescription>Esta funcionalidade foi temporariamente desativada</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-muted p-4 rounded-lg">
                 <h3 className="font-medium flex items-center gap-2 mb-2">
                   <AlertCircle className="h-4 w-4 text-amber-500" />
-                  Como funciona
+                  Aviso
                 </h3>
-                <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground">
-                  <li>Conecte sua carteira MetaMask</li>
-                  <li>Verifique se você é um dono autorizado</li>
-                  <li>Acesse o dashboard para mintar NFTs para seus clientes</li>
-                </ol>
+                <p className="text-sm text-muted-foreground">
+                  O acesso à área de empresas está temporariamente indisponível. Por favor, entre em contato com o
+                  suporte para mais informações.
+                </p>
               </div>
-
-              {walletAddress && (
-                <div className="bg-muted p-4 rounded-lg">
-                  <h3 className="font-medium mb-2">Carteira conectada</h3>
-                  <p className="text-sm font-mono break-all">{walletAddress}</p>
-                  {isCheckingOwner ? (
-                    <div className="flex items-center justify-center mt-2">
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      <span className="text-sm">Verificando permissões...</span>
-                    </div>
-                  ) : isOwner ? (
-                    <div className="bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-400 p-2 rounded mt-2 text-sm">
-                      Você é um dono autorizado
-                    </div>
-                  ) : (
-                    <div className="bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-400 p-2 rounded mt-2 text-sm">
-                      Você não é um dono autorizado
-                    </div>
-                  )}
-                </div>
-              )}
             </CardContent>
             <CardFooter className="flex flex-col gap-2">
-              <Button
-                className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-                onClick={handleConnectWallet}
-                disabled={isConnecting || isCheckingOwner}
-              >
-                {isConnecting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Conectando...
-                  </>
-                ) : (
-                  <>
-                    <Wallet className="mr-2 h-4 w-4" />
-                    Conectar Carteira
-                  </>
-                )}
-              </Button>
-
-              <Button variant="outline" className="w-full" onClick={handleDemoAccess}>
-                Acessar Demonstração
+              <Button variant="outline" className="w-full" onClick={() => router.push("/")}>
+                Voltar para a página inicial
               </Button>
             </CardFooter>
           </Card>
