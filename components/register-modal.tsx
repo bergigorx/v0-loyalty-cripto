@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,9 +15,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Facebook, Wallet, Loader2 } from "lucide-react"
-import { createClientComponentClient } from "@/lib/supabase"
+import { Facebook, Wallet, Loader2, AlertCircle } from "lucide-react"
+import { createClientComponentClient } from "@/lib/supabase-config"
 import { toast } from "@/components/ui/use-toast"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { sanitizeInput, isValidEmail, checkRateLimit } from "@/lib/security-utils"
 
 interface RegisterModalProps {
   open: boolean
@@ -27,53 +29,143 @@ interface RegisterModalProps {
 export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [fullName, setFullName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [csrfToken] = useState(`csrf-${Math.random().toString(36).substring(2, 15)}`)
   const supabase = createClientComponentClient()
 
-  const handleRegisterWithEmail = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<string>>) => {
+      const { name, value } = e.target
+      const sanitizedValue = sanitizeInput(value)
+      setter(sanitizedValue)
 
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
-        },
-      })
+      // Limpar erro quando o usuário digita
+      if (errors[name]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors[name]
+          return newErrors
+        })
+      }
+    },
+    [errors],
+  )
 
-      if (error) {
-        throw error
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {}
+
+    // Validar nome completo
+    if (!fullName.trim()) {
+      newErrors.fullName = "Nome completo é obrigatório"
+    } else if (fullName.trim().length < 3) {
+      newErrors.fullName = "Nome deve ter pelo menos 3 caracteres"
+    }
+
+    // Validar email
+    if (!email.trim()) {
+      newErrors.email = "Email é obrigatório"
+    } else if (!isValidEmail(email)) {
+      newErrors.email = "Email inválido"
+    }
+
+    // Validar senha
+    if (!password) {
+      newErrors.password = "Senha é obrigatória"
+    } else if (password.length < 8) {
+      newErrors.password = "Senha deve ter pelo menos 8 caracteres"
+    } else if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      newErrors.password = "Senha deve conter letras maiúsculas, minúsculas e números"
+    }
+
+    // Validar confirmação de senha
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = "As senhas não coincidem"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }, [fullName, email, password, confirmPassword])
+
+  const handleRegisterWithEmail = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+
+      // Validar formulário
+      if (!validateForm()) return
+
+      // Implementar rate limiting para prevenir spam
+      if (!checkRateLimit(email, 3, 300000)) {
+        toast({
+          title: "Muitas tentativas",
+          description: "Por favor, aguarde alguns minutos antes de tentar novamente.",
+          variant: "destructive",
+        })
+        return
       }
 
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Verifique seu email para confirmar o cadastro.",
-      })
+      setIsLoading(true)
 
-      onOpenChange(false)
-    } catch (error: any) {
-      toast({
-        title: "Erro ao criar conta",
-        description: error.message || "Ocorreu um erro ao criar sua conta.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+            },
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        })
 
-  const handleRegisterWithGoogle = async () => {
+        if (error) {
+          throw error
+        }
+
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Verifique seu email para confirmar o cadastro.",
+        })
+
+        onOpenChange(false)
+      } catch (error: any) {
+        // Mensagem de erro específica para email já em uso
+        if (error.message?.includes("email already in use")) {
+          toast({
+            title: "Email já cadastrado",
+            description: "Este email já está sendo usado. Tente fazer login ou use outro email.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Erro ao criar conta",
+            description: "Ocorreu um erro ao criar sua conta. Tente novamente mais tarde.",
+            variant: "destructive",
+          })
+        }
+
+        // Log detalhado apenas para desenvolvimento
+        console.error("Registration error:", error.message)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [validateForm, fullName, email, password, supabase, onOpenChange],
+  )
+
+  const handleRegisterWithGoogle = useCallback(async () => {
     try {
       setIsLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       })
 
@@ -89,15 +181,16 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase])
 
-  const handleRegisterWithFacebook = async () => {
+  const handleRegisterWithFacebook = useCallback(async () => {
     try {
       setIsLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "facebook",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          scopes: "email",
         },
       })
 
@@ -113,27 +206,29 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase])
 
-  const handleRegisterWithMetaMask = async () => {
+  const handleRegisterWithMetaMask = useCallback(async () => {
     if (typeof window.ethereum !== "undefined") {
       try {
         setIsLoading(true)
+
+        // Gerar um nonce aleatório para assinar
+        const nonce = Math.floor(Math.random() * 1000000).toString()
+        localStorage.setItem("auth_nonce", nonce)
+
         // Solicitar conexão de conta
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
         const walletAddress = accounts[0]
 
-        // Gerar um nonce aleatório para assinar
-        const nonce = Math.floor(Math.random() * 1000000).toString()
-
-        // Solicitar assinatura do usuário
-        const message = `Autenticação Loyalty Cripto: ${nonce}`
+        // Solicitar assinatura do usuário com mensagem que inclui nonce
+        const message = `Registro Loyalty Cripto: ${nonce}`
         const signature = await window.ethereum.request({
           method: "personal_sign",
           params: [message, walletAddress],
         })
 
-        // Autenticar com Supabase usando o endereço da carteira como identificador
+        // Verificar se o usuário já existe
         const { data, error } = await supabase.auth.signInWithPassword({
           email: `${walletAddress.toLowerCase()}@wallet.metamask`,
           password: signature.slice(0, 20), // Usar parte da assinatura como senha
@@ -178,11 +273,21 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
 
         onOpenChange(false)
       } catch (error: any) {
-        toast({
-          title: "Erro ao conectar com MetaMask",
-          description: error.message || "Ocorreu um erro ao conectar com MetaMask.",
-          variant: "destructive",
-        })
+        // Tratamento específico de erros
+        if (error.code === 4001) {
+          // Usuário rejeitou a solicitação
+          toast({
+            title: "Conexão rejeitada",
+            description: "Você rejeitou a solicitação de conexão da carteira.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Erro ao conectar com MetaMask",
+            description: error.message || "Ocorreu um erro ao conectar com MetaMask.",
+            variant: "destructive",
+          })
+        }
       } finally {
         setIsLoading(false)
       }
@@ -193,11 +298,11 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
         variant: "destructive",
       })
     }
-  }
+  }, [onOpenChange, supabase])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-w-[90vw] w-full">
+      <DialogContent className="sm:max-w-[425px] max-w-[95vw] w-full">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Criar Conta</DialogTitle>
           <DialogDescription>Escolha como deseja criar sua conta na plataforma Loyalty Cripto</DialogDescription>
@@ -254,34 +359,60 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
                 <Label htmlFor="fullName">Nome Completo</Label>
                 <Input
                   id="fullName"
+                  name="fullName"
                   type="text"
                   placeholder="Seu nome completo"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => handleInputChange(e, setFullName)}
                   required
+                  aria-invalid={!!errors.fullName}
                 />
+                {errors.fullName && <p className="text-xs text-destructive">{errors.fullName}</p>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleInputChange(e, setEmail)}
                   required
+                  aria-invalid={!!errors.email}
                 />
+                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
+                  name="password"
                   type="password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => handleInputChange(e, setPassword)}
                   required
+                  aria-invalid={!!errors.password}
                 />
+                {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => handleInputChange(e, setConfirmPassword)}
+                  required
+                  aria-invalid={!!errors.confirmPassword}
+                />
+                {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword}</p>}
+              </div>
+
+              {/* Campo oculto para proteção CSRF */}
+              <input type="hidden" name="csrf_token" value={csrfToken} />
+
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
@@ -298,6 +429,19 @@ export function RegisterModal({ open, onOpenChange }: RegisterModalProps) {
               </Button>
             </div>
           </form>
+
+          {typeof window !== "undefined" && !window.ethereum && (
+            <Alert variant="warning" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                MetaMask não detectado. Para usar a autenticação com carteira,{" "}
+                <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="underline">
+                  instale a extensão MetaMask
+                </a>
+                .
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
         <DialogFooter className="flex flex-col items-center">
           <p className="text-sm text-muted-foreground">

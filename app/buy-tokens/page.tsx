@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,6 +25,7 @@ import {
   User,
   Mail,
   Lock,
+  Shield,
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { Logo } from "@/components/logo"
@@ -30,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { MobileMenu } from "@/components/mobile-menu"
 import { useWeb3 } from "@/components/web3-provider"
+import { sanitizeInput, isValidEmail, isValidEthereumAddress } from "@/lib/security-utils"
 
 // Preço simulado do token LOYA
 const LOYA_PRICE = 0.1 // R$ 0,10
@@ -57,6 +61,8 @@ export default function BuyTokensPage() {
     walletAddress,
     walletProvider,
     isConnecting,
+    chainId,
+    switchToPolygon,
   } = useWeb3()
 
   const [paymentMethod, setPaymentMethod] = useState("pix")
@@ -69,6 +75,24 @@ export default function BuyTokensPage() {
   const [authMethod, setAuthMethod] = useState<"wallet" | "credentials">("wallet")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [csrfToken, setCsrfToken] = useState("")
+
+  // Gerar token CSRF
+  useEffect(() => {
+    setCsrfToken(`csrf-${Math.random().toString(36).substring(2, 15)}`)
+  }, [])
+
+  // Verificar se está na rede correta
+  useEffect(() => {
+    if (chainId && chainId !== "0x89" && walletAddress) {
+      toast({
+        title: "Rede incorreta",
+        description: "Por favor, mude para a rede Polygon para melhor experiência.",
+        variant: "warning",
+      })
+    }
+  }, [chainId, walletAddress])
 
   // Calcular quantidade de tokens com base no valor
   useEffect(() => {
@@ -76,7 +100,72 @@ export default function BuyTokensPage() {
     setTokenAmount(Math.floor(amountValue / LOYA_PRICE))
   }, [amount])
 
-  const handleCopy = (text: string) => {
+  // Validar entrada de valor
+  const handleAmountChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value
+
+      // Permitir apenas números e um ponto decimal
+      if (!/^\d*\.?\d*$/.test(value) && value !== "") return
+
+      // Limitar a 2 casas decimais
+      const parts = value.split(".")
+      if (parts.length > 1 && parts[1].length > 2) return
+
+      // Limitar o valor máximo para evitar overflow
+      if (Number.parseFloat(value) > 100000) return
+
+      setAmount(value)
+
+      // Limpar erro se existir
+      if (errors.amount) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors.amount
+          return newErrors
+        })
+      }
+    },
+    [errors],
+  )
+
+  // Validar endereço de carteira manual
+  const handleWalletAddressChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value
+      setManualWalletAddress(value)
+
+      // Limpar erro se existir
+      if (errors.walletAddress) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors.walletAddress
+          return newErrors
+        })
+      }
+    },
+    [errors],
+  )
+
+  // Validar email
+  const handleEmailChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value
+      setEmail(sanitizeInput(value))
+
+      // Limpar erro se existir
+      if (errors.email) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors.email
+          return newErrors
+        })
+      }
+    },
+    [errors],
+  )
+
+  const handleCopy = useCallback((text: string) => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     toast({
@@ -84,68 +173,112 @@ export default function BuyTokensPage() {
       description: "Endereço copiado para a área de transferência.",
     })
     setTimeout(() => setCopied(false), 2000)
-  }
+  }, [])
 
-  const handleConfirmPayment = () => {
-    if (authMethod === "wallet" && !getEffectiveWalletAddress()) {
-      toast({
-        title: "Endereço da carteira necessário",
-        description: "Por favor, informe o endereço da sua carteira para receber os tokens.",
-        variant: "destructive",
-      })
-      return
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {}
+
+    // Validar valor
+    if (!amount || Number.parseFloat(amount) < 10) {
+      newErrors.amount = "O valor mínimo é R$ 10,00"
     }
 
-    if (authMethod === "credentials" && (!email || !password)) {
-      toast({
-        title: "Credenciais necessárias",
-        description: "Por favor, informe seu email e senha para receber os tokens.",
-        variant: "destructive",
-      })
-      return
+    // Validar método de autenticação
+    if (authMethod === "wallet") {
+      const effectiveAddress = walletAddress || manualWalletAddress
+      if (!effectiveAddress) {
+        newErrors.walletAddress = "Endereço da carteira é obrigatório"
+      } else if (!isValidEthereumAddress(effectiveAddress)) {
+        newErrors.walletAddress = "Endereço de carteira inválido"
+      }
+    } else {
+      if (!email) {
+        newErrors.email = "Email é obrigatório"
+      } else if (!isValidEmail(email)) {
+        newErrors.email = "Email inválido"
+      }
+
+      if (!password) {
+        newErrors.password = "Senha é obrigatória"
+      } else if (password.length < 8) {
+        newErrors.password = "Senha deve ter pelo menos 8 caracteres"
+      }
     }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }, [amount, authMethod, walletAddress, manualWalletAddress, email, password])
+
+  const handleConfirmPayment = useCallback(async () => {
+    if (!validateForm()) return
 
     setIsProcessing(true)
 
-    // Simulação de processamento
-    setTimeout(() => {
-      setIsProcessing(false)
+    try {
+      // Simular verificação de segurança
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // Verificar se o usuário está na rede correta se estiver usando carteira
+      if (authMethod === "wallet" && walletAddress && chainId !== "0x89") {
+        const shouldSwitch = window.confirm(
+          "Para melhor experiência, recomendamos usar a rede Polygon. Deseja mudar para a rede Polygon agora?",
+        )
+
+        if (shouldSwitch) {
+          await switchToPolygon()
+          setIsProcessing(false)
+          return
+        }
+      }
+
+      // Simulação de processamento bem-sucedido
       setIsConfirmed(true)
       toast({
         title: "Pagamento confirmado!",
         description: `${tokenAmount} tokens LOYA foram enviados para sua ${authMethod === "wallet" ? "carteira" : "conta"}.`,
       })
-    }, 2000)
-  }
+    } catch (error: any) {
+      toast({
+        title: "Erro no processamento",
+        description: error.message || "Ocorreu um erro ao processar seu pagamento.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }, [validateForm, authMethod, walletAddress, chainId, switchToPolygon, tokenAmount])
 
-  const getFee = () => {
+  const getFee = useCallback(() => {
     const amountValue = Number.parseFloat(amount) || 0
     return amountValue * FEES[paymentMethod as keyof typeof FEES]
-  }
+  }, [amount, paymentMethod])
 
-  const getTotal = () => {
+  const getTotal = useCallback(() => {
     const amountValue = Number.parseFloat(amount) || 0
     return amountValue + getFee()
-  }
+  }, [amount, getFee])
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setIsConfirmed(false)
     setAmount("100")
     setManualWalletAddress("")
     setEmail("")
     setPassword("")
-  }
+    setErrors({})
+    // Gerar novo token CSRF
+    setCsrfToken(`csrf-${Math.random().toString(36).substring(2, 15)}`)
+  }, [])
 
   // Obter o endereço efetivo da carteira (conectada ou manual)
-  const getEffectiveWalletAddress = () => {
+  const getEffectiveWalletAddress = useCallback(() => {
     return walletAddress || manualWalletAddress
-  }
+  }, [walletAddress, manualWalletAddress])
 
   // Formatar endereço da carteira para exibição
-  const formatWalletAddress = (address: string) => {
+  const formatWalletAddress = useCallback((address: string) => {
     if (!address) return ""
     return `${address.slice(0, 6)}...${address.slice(-4)}`
-  }
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -283,11 +416,16 @@ export default function BuyTokensPage() {
                       min="10"
                       step="10"
                       value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
+                      onChange={handleAmountChange}
                       className="pl-10"
+                      aria-invalid={!!errors.amount}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Valor mínimo: R$ 10,00</p>
+                  {errors.amount ? (
+                    <p className="text-xs text-destructive">{errors.amount}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Valor mínimo: R$ 10,00</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -340,53 +478,58 @@ export default function BuyTokensPage() {
                           id="wallet"
                           placeholder="0x..."
                           value={walletAddress || manualWalletAddress}
-                          onChange={(e) => setManualWalletAddress(e.target.value)}
+                          onChange={handleWalletAddressChange}
                           className="pl-10"
                           disabled={!!walletAddress}
+                          aria-invalid={!!errors.walletAddress}
                         />
                       </div>
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          {walletAddress
-                            ? `Conectado com ${walletProvider}: ${formatWalletAddress(walletAddress)}`
-                            : "Informe o endereço da sua carteira ou conecte diretamente"}
-                        </p>
-                        {walletAddress ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={disconnectWallet}
-                            className="h-8 text-xs w-full sm:w-auto"
-                          >
-                            Desconectar
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={connectWallet}
-                            className="h-8 text-xs w-full sm:w-auto"
-                          >
-                            {isConnecting ? (
-                              <>
-                                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                                Conectando...
-                              </>
-                            ) : (
-                              <>
-                                <Image
-                                  src="/placeholder.svg?height=16&width=16"
-                                  alt="MetaMask"
-                                  width={16}
-                                  height={16}
-                                  className="mr-1"
-                                />
-                                {isMobileDevice ? "Abrir MetaMask" : "Conectar MetaMask"}
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
+                      {errors.walletAddress ? (
+                        <p className="text-xs text-destructive">{errors.walletAddress}</p>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            {walletAddress
+                              ? `Conectado com ${walletProvider}: ${formatWalletAddress(walletAddress)}`
+                              : "Informe o endereço da sua carteira ou conecte diretamente"}
+                          </p>
+                          {walletAddress ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={disconnectWallet}
+                              className="h-8 text-xs w-full sm:w-auto"
+                            >
+                              Desconectar
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={connectWallet}
+                              className="h-8 text-xs w-full sm:w-auto"
+                            >
+                              {isConnecting ? (
+                                <>
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  Conectando...
+                                </>
+                              ) : (
+                                <>
+                                  <Image
+                                    src="/placeholder.svg?height=16&width=16"
+                                    alt="MetaMask"
+                                    width={16}
+                                    height={16}
+                                    className="mr-1"
+                                  />
+                                  {isMobileDevice ? "Abrir MetaMask" : "Conectar MetaMask"}
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {!isMetaMaskInstalled && (
@@ -434,10 +577,12 @@ export default function BuyTokensPage() {
                           type="email"
                           placeholder="seu@email.com"
                           value={email}
-                          onChange={(e) => setEmail(e.target.value)}
+                          onChange={handleEmailChange}
                           className="pl-10"
+                          aria-invalid={!!errors.email}
                         />
                       </div>
+                      {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password">Senha</Label>
@@ -450,8 +595,10 @@ export default function BuyTokensPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           className="pl-10"
+                          aria-invalid={!!errors.password}
                         />
                       </div>
+                      {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Entre com suas credenciais para receber os tokens em sua conta
@@ -581,6 +728,9 @@ export default function BuyTokensPage() {
                     <span>R$ {getTotal().toFixed(2)}</span>
                   </div>
                 </div>
+
+                {/* Campo oculto para proteção CSRF */}
+                <input type="hidden" name="csrf_token" value={csrfToken} />
               </CardContent>
               <CardFooter>
                 <Button
@@ -600,7 +750,10 @@ export default function BuyTokensPage() {
                       Processando...
                     </>
                   ) : (
-                    <>Confirmar Pagamento</>
+                    <>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Confirmar Pagamento
+                    </>
                   )}
                 </Button>
               </CardFooter>

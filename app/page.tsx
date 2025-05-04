@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Coins, Gift, BarChart3, ShieldCheck, Wallet, Trophy, ArrowRight, User } from "lucide-react"
 import { RegisterModal } from "@/components/register-modal"
 import { LoginModal } from "@/components/login-modal"
@@ -11,24 +10,27 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Logo } from "@/components/logo"
 import { MobileMenu } from "@/components/mobile-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ContactForm } from "@/components/contact-form"
+import { LoadingScreen } from "@/components/loading-screen"
 
 export default function LandingPage() {
   const [registerModalOpen, setRegisterModalOpen] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const { user, profile, signOut } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [contactModalOpen, setContactModalOpen] = useState(false)
+
+  // Simular carregamento inicial para melhorar UX
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 800)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     // Verificar se o parâmetro login=true está presente na URL
@@ -37,18 +39,28 @@ export default function LandingPage() {
     }
   }, [searchParams, user])
 
-  const openRegisterModal = () => {
+  const openRegisterModal = useCallback(() => {
     setLoginModalOpen(false)
     setRegisterModalOpen(true)
-  }
+  }, [])
 
-  const openLoginModal = () => {
+  const openLoginModal = useCallback(() => {
     setRegisterModalOpen(false)
     setLoginModalOpen(true)
-  }
+  }, [])
 
-  const handleProfileClick = () => {
+  const handleProfileClick = useCallback(() => {
     router.push("/dashboard")
+  }, [router])
+
+  const handleContactSuccess = useCallback(() => {
+    setTimeout(() => {
+      setContactModalOpen(false)
+    }, 3000)
+  }, [])
+
+  if (isLoading) {
+    return <LoadingScreen message="Carregando página inicial..." />
   }
 
   return (
@@ -538,45 +550,15 @@ export default function LandingPage() {
       {/* Modais de login e registro */}
       <RegisterModal open={registerModalOpen} onOpenChange={setRegisterModalOpen} />
       <LoginModal open={loginModalOpen} onOpenChange={setLoginModalOpen} onRegisterClick={openRegisterModal} />
+
       {/* Modal de contato */}
       <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-w-[95vw]">
           <DialogHeader>
             <DialogTitle>Entre em contato</DialogTitle>
             <DialogDescription>Preencha o formulário abaixo para saber mais sobre nossa plataforma.</DialogDescription>
           </DialogHeader>
-          <form className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Nome completo</Label>
-              <Input id="name" placeholder="Seu nome completo" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="seu@email.com" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input id="phone" placeholder="(00) 00000-0000" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="state">Estado</Label>
-                <Input id="state" placeholder="Estado" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="city">Cidade</Label>
-                <Input id="city" placeholder="Cidade" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="submit"
-                className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
-              >
-                Enviar
-              </Button>
-            </DialogFooter>
-          </form>
+          <ContactForm onSuccess={handleContactSuccess} onClose={() => setContactModalOpen(false)} />
         </DialogContent>
       </Dialog>
     </div>

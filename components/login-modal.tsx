@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,10 +14,12 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Wallet, Loader2 } from "lucide-react"
-import { createClientComponentClient } from "@/lib/supabase"
+import { Wallet, Loader2, AlertCircle } from "lucide-react"
+import { createClientComponentClient } from "@/lib/supabase-config"
 import { toast } from "@/components/ui/use-toast"
 import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { sanitizeInput, isValidEmail, checkRateLimit } from "@/lib/security-utils"
 
 interface LoginModalProps {
   open: boolean
@@ -29,46 +31,109 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [csrfToken] = useState(`csrf-${Math.random().toString(36).substring(2, 15)}`)
   const supabase = createClientComponentClient()
 
-  const handleLoginWithEmail = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const handleEmailChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const sanitizedValue = sanitizeInput(e.target.value)
+      setEmail(sanitizedValue)
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      // Limpar erro quando o usuário digita
+      if (errors.email) {
+        setErrors((prev) => {
+          const newErrors = { ...prev }
+          delete newErrors.email
+          return newErrors
+        })
+      }
+    },
+    [errors],
+  )
 
-      if (error) {
-        throw error
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {}
+
+    // Validar email
+    if (!email.trim()) {
+      newErrors.email = "Email é obrigatório"
+    } else if (!isValidEmail(email)) {
+      newErrors.email = "Email inválido"
+    }
+
+    // Validar senha
+    if (!password) {
+      newErrors.password = "Senha é obrigatória"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }, [email, password])
+
+  const handleLoginWithEmail = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+
+      // Validar formulário
+      if (!validateForm()) return
+
+      // Implementar rate limiting para prevenir ataques de força bruta
+      if (!checkRateLimit(email, 5, 60000)) {
+        toast({
+          title: "Muitas tentativas",
+          description: "Por favor, aguarde um momento antes de tentar novamente.",
+          variant: "destructive",
+        })
+        return
       }
 
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo de volta à plataforma Loyalty Cripto.",
-      })
+      setIsLoading(true)
 
-      onOpenChange(false)
-    } catch (error: any) {
-      toast({
-        title: "Erro ao fazer login",
-        description: error.message || "Verifique suas credenciais e tente novamente.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
 
-  const handleLoginWithGoogle = async () => {
+        if (error) {
+          throw error
+        }
+
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo de volta à plataforma Loyalty Cripto.",
+        })
+
+        onOpenChange(false)
+      } catch (error: any) {
+        // Mensagem de erro genérica para não revelar informações sensíveis
+        toast({
+          title: "Erro ao fazer login",
+          description: "Credenciais inválidas. Verifique seu email e senha.",
+          variant: "destructive",
+        })
+
+        // Log detalhado apenas para desenvolvimento
+        console.error("Login error:", error.message)
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [validateForm, email, password, supabase, onOpenChange],
+  )
+
+  const handleLoginWithGoogle = useCallback(async () => {
     try {
       setIsLoading(true)
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       })
 
@@ -84,20 +149,22 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [supabase])
 
-  const handleLoginWithMetaMask = async () => {
+  const handleLoginWithMetaMask = useCallback(async () => {
     if (typeof window.ethereum !== "undefined") {
       try {
         setIsLoading(true)
+
+        // Gerar um nonce aleatório para assinar
+        const nonce = Math.floor(Math.random() * 1000000).toString()
+        localStorage.setItem("auth_nonce", nonce)
+
         // Solicitar conexão de conta
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
         const walletAddress = accounts[0]
 
-        // Gerar um nonce aleatório para assinar
-        const nonce = Math.floor(Math.random() * 1000000).toString()
-
-        // Solicitar assinatura do usuário
+        // Solicitar assinatura do usuário com mensagem que inclui nonce
         const message = `Autenticação Loyalty Cripto: ${nonce}`
         const signature = await window.ethereum.request({
           method: "personal_sign",
@@ -132,11 +199,21 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
 
         onOpenChange(false)
       } catch (error: any) {
-        toast({
-          title: "Erro ao conectar com MetaMask",
-          description: error.message || "Ocorreu um erro ao conectar com MetaMask.",
-          variant: "destructive",
-        })
+        // Tratamento específico de erros
+        if (error.code === 4001) {
+          // Usuário rejeitou a solicitação
+          toast({
+            title: "Conexão rejeitada",
+            description: "Você rejeitou a solicitação de conexão da carteira.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "Erro ao conectar com MetaMask",
+            description: error.message || "Ocorreu um erro ao conectar com MetaMask.",
+            variant: "destructive",
+          })
+        }
       } finally {
         setIsLoading(false)
       }
@@ -147,11 +224,11 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
         variant: "destructive",
       })
     }
-  }
+  }, [onOpenChange, onRegisterClick, supabase])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] max-w-[90vw] w-full">
+      <DialogContent className="sm:max-w-[425px] max-w-[95vw] w-full">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">Entrar</DialogTitle>
           <DialogDescription>Acesse sua conta na plataforma Loyalty Cripto</DialogDescription>
@@ -204,9 +281,11 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
                   type="email"
                   placeholder="seu@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
                   required
+                  aria-invalid={!!errors.email}
                 />
+                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">Senha</Label>
@@ -216,8 +295,14 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  aria-invalid={!!errors.password}
                 />
+                {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
               </div>
+
+              {/* Campo oculto para proteção CSRF */}
+              <input type="hidden" name="csrf_token" value={csrfToken} />
+
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-purple-600 to-teal-500 hover:from-purple-700 hover:to-teal-600"
@@ -234,6 +319,19 @@ export function LoginModal({ open, onOpenChange, onRegisterClick }: LoginModalPr
               </Button>
             </div>
           </form>
+
+          {typeof window !== "undefined" && !window.ethereum && (
+            <Alert variant="warning" className="mt-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                MetaMask não detectado. Para usar a autenticação com carteira,{" "}
+                <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="underline">
+                  instale a extensão MetaMask
+                </a>
+                .
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
         <DialogFooter className="flex flex-col items-center">
           <p className="text-sm text-muted-foreground">
