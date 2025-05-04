@@ -14,7 +14,6 @@ const nextConfig = {
     unoptimized: true,
   },
   experimental: {
-    optimizeCss: true,
     scrollRestoration: true,
   },
   poweredByHeader: false, // Remove o header X-Powered-By por segurança
