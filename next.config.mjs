@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Desativando para evitar renderizações duplas
   swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
@@ -10,51 +10,17 @@ const nextConfig = {
   },
   images: {
     domains: ['placeholder.svg', 'v0.blob.vercel-storage.com'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    unoptimized: true,
+    unoptimized: true, // Desativando otimização de imagens
   },
-  experimental: {
-    // Removendo optimizeCss para evitar problemas com critters
-    // optimizeCss: true,
-    serverComponentsExternalPackages: ['@prisma/client', '@prisma/engines'],
-    scrollRestoration: true,
-  },
-  // Desabilitar a geração estática da página 404
-  output: 'standalone',
-  poweredByHeader: false, // Remove o header X-Powered-By por segurança
+  // Configurações críticas para resolver o problema
+  output: 'export', // Mudando para export estático
+  distDir: 'out', // Diretório de saída personalizado
+  trailingSlash: true, // Adicionar barra no final das URLs
+  skipTrailingSlashRedirect: true, // Pular redirecionamento de barra no final
+  poweredByHeader: false,
+  // Desativando headers personalizados para simplificar
   headers: async () => {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co https://*.vercel-postgres.com https://*.polygon-rpc.com wss://*.bridge.walletconnect.org https://*.infura.io https://*.metamask.io;",
-          },
-        ],
-      },
-    ]
+    return []
   },
 }
 
