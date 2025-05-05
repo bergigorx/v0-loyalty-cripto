@@ -20,6 +20,8 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', '@prisma/engines'],
     scrollRestoration: true,
   },
+  // Desabilitar a geração estática da página 404
+  output: 'standalone',
   poweredByHeader: false, // Remove o header X-Powered-By por segurança
   headers: async () => {
     return [
