@@ -9,10 +9,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: ['placeholder.svg', 'v0.blob.vercel-storage.com'],
+    domains: ["placeholder.svg", "v0.blob.vercel-storage.com"],
     unoptimized: true,
   },
   poweredByHeader: false,
+  // Desabilitar a geração estática para evitar problemas com useSearchParams
+  output: "standalone",
 }
 
-export default nextConfig
+module.exports = nextConfig

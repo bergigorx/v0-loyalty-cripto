@@ -1,16 +1,15 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Home, RefreshCw } from "lucide-react"
+import { Home } from "lucide-react"
 import Link from "next/link"
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+export default function Error() {
+  // Função simples para recarregar a página
+  const handleRefresh = () => {
+    window.location.reload()
+  }
+
   return (
     <div className="container flex flex-col items-center justify-center min-h-[70vh] py-12">
       <div className="flex flex-col items-center justify-center text-center space-y-6">
@@ -21,10 +20,7 @@ export default function Error({
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Button onClick={() => reset()}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Tentar novamente
-          </Button>
+          <Button onClick={handleRefresh}>Tentar novamente</Button>
           <Button asChild variant="outline">
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />

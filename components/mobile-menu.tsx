@@ -11,9 +11,10 @@ import { useWeb3 } from "@/components/web3-provider"
 interface MobileMenuProps {
   activeRoute?: string
   onSignOut?: () => Promise<void>
+  onLoginClick?: () => void
 }
 
-export function MobileMenu({ activeRoute, onSignOut }: MobileMenuProps) {
+export function MobileMenu({ activeRoute, onSignOut, onLoginClick }: MobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const { user, profile } = useAuth()
   const { walletAddress, walletProvider } = useWeb3()
@@ -53,7 +54,11 @@ export function MobileMenu({ activeRoute, onSignOut }: MobileMenuProps) {
   }
 
   const handleLoginClick = () => {
-    router.push("/?login=true")
+    if (onLoginClick) {
+      onLoginClick()
+    } else {
+      router.push("/?login=true")
+    }
     closeMenu()
   }
 

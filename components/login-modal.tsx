@@ -62,11 +62,6 @@ export function LoginModal({ isOpen, onClose, onRegisterClick }: LoginModalProps
 
       // Redirecionar para o dashboard
       router.push("/dashboard")
-
-      // Forçar um recarregamento da página para garantir que o estado de autenticação seja atualizado
-      setTimeout(() => {
-        window.location.href = "/dashboard"
-      }, 100)
     } catch (error: any) {
       console.error("Login error:", error)
       toast({
