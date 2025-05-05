@@ -20,6 +20,17 @@ const nextConfig = {
   
   // Desativar o header X-Powered-By
   poweredByHeader: false,
+  
+  // Desativar a exportação estática
+  // output: 'export', // Remover esta linha
+  
+  // Configurações experimentais
+  experimental: {
+    // Desativar a pré-renderização
+    disablePrerender: true,
+    // Desativar a otimização de CSS
+    optimizeCss: false,
+  },
 }
 
 export default nextConfig
