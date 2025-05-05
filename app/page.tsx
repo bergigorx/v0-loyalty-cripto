@@ -129,7 +129,12 @@ export default function LandingPage() {
                 </>
               ) : (
                 <>
-                  <Button variant="outline" size="sm" className="hidden sm:flex" onClick={openLoginModal}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden sm:flex"
+                    onClick={() => setLoginModalOpen(true)}
+                  >
                     Entrar
                   </Button>
                   <Button

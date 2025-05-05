@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,12 +9,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: ['placeholder.com', 'via.placeholder.com'],
+    domains: ['placeholder.svg', 'v0.blob.vercel-storage.com'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     unoptimized: true,
   },
   experimental: {
+    // Removendo optimizeCss para evitar problemas com critters
+    // optimizeCss: true,
+    serverComponentsExternalPackages: ['@prisma/client', '@prisma/engines'],
     scrollRestoration: true,
   },
   poweredByHeader: false, // Remove o header X-Powered-By por segurança
